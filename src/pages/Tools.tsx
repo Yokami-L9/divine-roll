@@ -1,22 +1,12 @@
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dices, Swords, Calculator, Users, Backpack, Sparkles } from "lucide-react";
+import DiceRoller from "@/components/DiceRoller";
+import InitiativeTracker from "@/components/InitiativeTracker";
 
 const Tools = () => {
   const tools = [
-    {
-      icon: Dices,
-      title: "Бросок кубиков",
-      description: "Виртуальные кубики с модификаторами и историей бросков",
-      color: "bg-primary/20",
-    },
-    {
-      icon: Swords,
-      title: "Трекер инициативы",
-      description: "Отслеживайте порядок ходов и состояния персонажей в бою",
-      color: "bg-accent/20",
-    },
     {
       icon: Calculator,
       title: "Калькулятор урона",
@@ -56,49 +46,43 @@ const Tools = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Tabs defaultValue="dice" className="mb-12">
+          <TabsList className="bg-card border border-border mb-6">
+            <TabsTrigger value="dice" className="gap-2 data-[state=active]:bg-primary/20">
+              <Dices className="w-4 h-4" />
+              Кубики
+            </TabsTrigger>
+            <TabsTrigger value="initiative" className="gap-2 data-[state=active]:bg-primary/20">
+              <Swords className="w-4 h-4" />
+              Инициатива
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dice">
+            <DiceRoller />
+          </TabsContent>
+
+          <TabsContent value="initiative">
+            <InitiativeTracker />
+          </TabsContent>
+        </Tabs>
+
+        <h2 className="text-2xl font-serif font-semibold mb-6">Другие инструменты</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {tools.map((tool, index) => (
             <Card
               key={index}
               className="p-6 bg-card border-border hover:border-primary/50 transition-all hover:shadow-lg group cursor-pointer"
             >
-              <div className={`w-16 h-16 ${tool.color} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <tool.icon className="w-8 h-8 text-primary" />
+              <div className={`w-14 h-14 ${tool.color} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                <tool.icon className="w-7 h-7 text-primary" />
               </div>
-              <h3 className="text-xl font-serif font-semibold mb-2 group-hover:text-primary transition-colors">
+              <h3 className="text-lg font-serif font-semibold mb-2 group-hover:text-primary transition-colors">
                 {tool.title}
               </h3>
               <p className="text-muted-foreground text-sm">{tool.description}</p>
             </Card>
           ))}
-        </div>
-
-        <div className="mt-12">
-          <Card className="p-8 bg-gradient-arcane">
-            <div className="text-center max-w-2xl mx-auto">
-              <Dices className="w-16 h-16 text-primary mx-auto mb-6 gold-glow animate-float" />
-              <h2 className="text-3xl font-serif font-bold mb-4">
-                Бросок кубиков
-              </h2>
-              <p className="text-muted-foreground mb-6">
-                Выберите тип кубика и добавьте модификаторы
-              </p>
-              <div className="flex gap-3 justify-center flex-wrap mb-6">
-                {["d4", "d6", "d8", "d10", "d12", "d20", "d100"].map((dice) => (
-                  <Button
-                    key={dice}
-                    size="lg"
-                    className="bg-card hover:bg-primary/20 border border-primary/50 w-16 h-16 text-lg font-bold"
-                  >
-                    {dice}
-                  </Button>
-                ))}
-              </div>
-              <Button className="bg-gradient-gold hover:opacity-90 px-8">
-                Бросить кубики
-              </Button>
-            </div>
-          </Card>
         </div>
       </main>
     </div>
