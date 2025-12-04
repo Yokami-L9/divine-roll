@@ -2,8 +2,9 @@ import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserCircle, Plus, Backpack, BookText, Users, Sparkles } from "lucide-react";
+import { UserCircle, Plus, Backpack, BookText, Users, Sparkles, Calendar } from "lucide-react";
 import CharacterGenerator from "@/components/CharacterGenerator";
+import SessionNotes from "@/components/SessionNotes";
 
 const Characters = () => {
   const characters = [
@@ -35,6 +36,10 @@ const Characters = () => {
             <TabsTrigger value="generator" className="gap-2 data-[state=active]:bg-primary/20">
               <Sparkles className="w-4 h-4" />
               Генератор
+            </TabsTrigger>
+            <TabsTrigger value="sessions" className="gap-2 data-[state=active]:bg-primary/20">
+              <Calendar className="w-4 h-4" />
+              Сессии
             </TabsTrigger>
           </TabsList>
 
@@ -99,6 +104,10 @@ const Characters = () => {
 
           <TabsContent value="generator">
             <CharacterGenerator />
+          </TabsContent>
+
+          <TabsContent value="sessions">
+            <SessionNotes />
           </TabsContent>
         </Tabs>
       </main>

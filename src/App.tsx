@@ -14,6 +14,7 @@ import Tools from "./pages/Tools";
 import Maps from "./pages/Maps";
 import Homebrew from "./pages/Homebrew";
 import GM from "./pages/GM";
+import Encyclopedia from "./pages/Encyclopedia";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/maps" element={<Maps />} />
           <Route path="/homebrew" element={<Homebrew />} />
           <Route path="/gm" element={<GM />} />
+          <Route path="/encyclopedia" element={<Encyclopedia />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
