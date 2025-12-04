@@ -11,6 +11,7 @@ import {
   Shield,
   Dices,
   BookOpen,
+  Library,
 } from "lucide-react";
 
 const Navigation = () => {
@@ -23,6 +24,7 @@ const Navigation = () => {
     { icon: Dices, label: "Инструменты", path: "/tools" },
     { icon: Map, label: "Карты", path: "/maps" },
     { icon: Wand2, label: "Homebrew", path: "/homebrew" },
+    { icon: Library, label: "Правила", path: "/encyclopedia" },
     { icon: MessageSquare, label: "Сообщество", path: "/community" },
     { icon: Shield, label: "GM", path: "/gm" },
   ];

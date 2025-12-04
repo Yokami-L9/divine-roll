@@ -14,6 +14,7 @@ import {
   Dices,
   BookOpen,
   Sparkles,
+  Library,
 } from "lucide-react";
 import heroBanner from "@/assets/hero-banner.jpg";
 
@@ -66,6 +67,12 @@ const Index = () => {
       title: "Homebrew",
       description: "Кастомные классы, заклинания, предметы",
       path: "/homebrew",
+    },
+    {
+      icon: Library,
+      title: "Энциклопедия",
+      description: "Состояния, заклинания, таблицы правил",
+      path: "/encyclopedia",
     },
     {
       icon: MessageSquare,
