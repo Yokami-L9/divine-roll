@@ -14,7 +14,299 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      characters: {
+        Row: {
+          backstory: string | null
+          charisma: number
+          class: string
+          constitution: number
+          created_at: string
+          dexterity: number
+          hp: number
+          id: string
+          intelligence: number
+          level: number
+          max_hp: number
+          name: string
+          race: string
+          strength: number
+          updated_at: string
+          user_id: string
+          wisdom: number
+        }
+        Insert: {
+          backstory?: string | null
+          charisma?: number
+          class: string
+          constitution?: number
+          created_at?: string
+          dexterity?: number
+          hp?: number
+          id?: string
+          intelligence?: number
+          level?: number
+          max_hp?: number
+          name: string
+          race: string
+          strength?: number
+          updated_at?: string
+          user_id: string
+          wisdom?: number
+        }
+        Update: {
+          backstory?: string | null
+          charisma?: number
+          class?: string
+          constitution?: number
+          created_at?: string
+          dexterity?: number
+          hp?: number
+          id?: string
+          intelligence?: number
+          level?: number
+          max_hp?: number
+          name?: string
+          race?: string
+          strength?: number
+          updated_at?: string
+          user_id?: string
+          wisdom?: number
+        }
+        Relationships: []
+      }
+      homebrew_items: {
+        Row: {
+          created_at: string
+          damage: string | null
+          description: string | null
+          effect: string | null
+          id: string
+          is_public: boolean | null
+          name: string
+          rarity: string | null
+          requirements: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          damage?: string | null
+          description?: string | null
+          effect?: string | null
+          id?: string
+          is_public?: boolean | null
+          name: string
+          rarity?: string | null
+          requirements?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          damage?: string | null
+          description?: string | null
+          effect?: string | null
+          id?: string
+          is_public?: boolean | null
+          name?: string
+          rarity?: string | null
+          requirements?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      maps: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          name: string
+          thumbnail_url: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          name: string
+          thumbnail_url?: string | null
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          name?: string
+          thumbnail_url?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      npcs: {
+        Row: {
+          created_at: string
+          description: string | null
+          disposition: string | null
+          id: string
+          location: string | null
+          name: string
+          role: string
+          secrets: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          disposition?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          role: string
+          secrets?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          disposition?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          role?: string
+          secrets?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      quests: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          parent_id: string | null
+          priority: string | null
+          reward: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          parent_id?: string | null
+          priority?: string | null
+          reward?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          parent_id?: string | null
+          priority?: string | null
+          reward?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quests_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "quests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_notes: {
+        Row: {
+          created_at: string
+          date: string
+          duration: string | null
+          highlights: string[] | null
+          id: string
+          players: string[] | null
+          session_number: number
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          duration?: string | null
+          highlights?: string[] | null
+          id?: string
+          players?: string[] | null
+          session_number: number
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          duration?: string | null
+          highlights?: string[] | null
+          id?: string
+          players?: string[] | null
+          session_number?: number
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
