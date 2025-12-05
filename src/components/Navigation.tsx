@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Scroll,
   Users,
@@ -12,9 +13,13 @@ import {
   Dices,
   BookOpen,
   Library,
+  LogOut,
+  User,
 } from "lucide-react";
 
 const Navigation = () => {
+  const { user, signOut } = useAuth();
+
   const navItems = [
     { icon: BookOpen, label: "Мир", path: "/world" },
     { icon: Users, label: "Персонажи", path: "/characters" },
@@ -58,12 +63,38 @@ const Navigation = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="border-primary/50 hover:bg-primary/10">
-              Войти
-            </Button>
-            <Button size="sm" className="bg-gradient-gold hover:opacity-90">
-              Регистрация
-            </Button>
+            {user ? (
+              <>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg">
+                  <User className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">
+                    {user.user_metadata?.username || user.email?.split('@')[0]}
+                  </span>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-primary/50 hover:bg-primary/10 gap-2"
+                  onClick={() => signOut()}
+                >
+                  <LogOut className="w-4 h-4" />
+                  Выйти
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="outline" size="sm" className="border-primary/50 hover:bg-primary/10">
+                    Войти
+                  </Button>
+                </Link>
+                <Link to="/auth">
+                  <Button size="sm" className="bg-gradient-gold hover:opacity-90">
+                    Регистрация
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
