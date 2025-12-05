@@ -9,7 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dices, RefreshCw, Download, User, Sparkles } from "lucide-react";
+import { Dices, RefreshCw, Save, User, Sparkles, Loader2 } from "lucide-react";
+import { useCharacters } from "@/hooks/useCharacters";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface CharacterStats {
   strength: number;
@@ -24,7 +27,6 @@ const CharacterGenerator = () => {
   const [name, setName] = useState("");
   const [race, setRace] = useState("");
   const [charClass, setCharClass] = useState("");
-  const [background, setBackground] = useState("");
   const [stats, setStats] = useState<CharacterStats>({
     strength: 10,
     dexterity: 10,
@@ -34,6 +36,11 @@ const CharacterGenerator = () => {
     charisma: 10,
   });
   const [isRolling, setIsRolling] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const { createCharacter } = useCharacters();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const races = [
     "Человек", "Эльф", "Дварф", "Полурослик", "Драконорождённый",
@@ -43,11 +50,6 @@ const CharacterGenerator = () => {
   const classes = [
     "Воин", "Маг", "Жрец", "Плут", "Варвар", "Бард",
     "Друид", "Монах", "Паладин", "Следопыт", "Чародей", "Колдун",
-  ];
-
-  const backgrounds = [
-    "Солдат", "Преступник", "Мудрец", "Артист", "Народный герой",
-    "Отшельник", "Благородный", "Странник", "Прислужник",
   ];
 
   const randomNames = [
@@ -84,8 +86,54 @@ const CharacterGenerator = () => {
     setName(randomNames[Math.floor(Math.random() * randomNames.length)]);
     setRace(races[Math.floor(Math.random() * races.length)]);
     setCharClass(classes[Math.floor(Math.random() * classes.length)]);
-    setBackground(backgrounds[Math.floor(Math.random() * backgrounds.length)]);
     rollAllStats();
+  };
+
+  const handleSave = async () => {
+    if (!user) {
+      toast({
+        title: "Требуется авторизация",
+        description: "Войдите, чтобы сохранять персонажей",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!name || !race || !charClass) {
+      toast({
+        title: "Заполните данные",
+        description: "Укажите имя, расу и класс персонажа",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    const maxHp = 10 + Math.floor((stats.constitution - 10) / 2);
+    
+    await createCharacter({
+      name,
+      race,
+      class: charClass,
+      level: 1,
+      hp: maxHp,
+      max_hp: maxHp,
+      ...stats,
+    });
+    
+    setIsSaving(false);
+    // Reset form
+    setName("");
+    setRace("");
+    setCharClass("");
+    setStats({
+      strength: 10,
+      dexterity: 10,
+      constitution: 10,
+      intelligence: 10,
+      wisdom: 10,
+      charisma: 10,
+    });
   };
 
   const getModifier = (stat: number): string => {
@@ -163,24 +211,6 @@ const CharacterGenerator = () => {
               </SelectContent>
             </Select>
           </div>
-
-          <div>
-            <label className="text-sm text-muted-foreground mb-2 block">
-              Предыстория
-            </label>
-            <Select value={background} onValueChange={setBackground}>
-              <SelectTrigger className="bg-background border-border">
-                <SelectValue placeholder="Выберите предысторию" />
-              </SelectTrigger>
-              <SelectContent>
-                {backgrounds.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {/* Stats */}
@@ -227,15 +257,22 @@ const CharacterGenerator = () => {
           <p className="text-muted-foreground">
             {race && `${race}`}
             {charClass && ` • ${charClass}`}
-            {background && ` • ${background}`}
           </p>
         </div>
       )}
 
       {/* Actions */}
       <div className="flex gap-3 justify-center">
-        <Button className="bg-gradient-gold hover:opacity-90 gap-2">
-          <Download className="w-4 h-4" />
+        <Button 
+          onClick={handleSave}
+          disabled={isSaving || !name || !race || !charClass}
+          className="bg-gradient-gold hover:opacity-90 gap-2"
+        >
+          {isSaving ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
           Сохранить персонажа
         </Button>
         <Button
@@ -244,7 +281,6 @@ const CharacterGenerator = () => {
             setName("");
             setRace("");
             setCharClass("");
-            setBackground("");
             setStats({
               strength: 10,
               dexterity: 10,
