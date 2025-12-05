@@ -11,7 +11,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sword, Sparkles, Shield, Scroll, Save, Eye, Wand2 } from "lucide-react";
+import { Sword, Sparkles, Shield, Save, Wand2, Loader2 } from "lucide-react";
+import { useHomebrew } from "@/hooks/useHomebrew";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const HomebrewCreator = () => {
   const [itemName, setItemName] = useState("");
@@ -19,19 +22,14 @@ const HomebrewCreator = () => {
   const [itemRarity, setItemRarity] = useState("");
   const [itemDescription, setItemDescription] = useState("");
   const [itemEffect, setItemEffect] = useState("");
-
-  const [spellName, setSpellName] = useState("");
-  const [spellLevel, setSpellLevel] = useState("");
-  const [spellSchool, setSpellSchool] = useState("");
-  const [spellCastTime, setSpellCastTime] = useState("");
-  const [spellRange, setSpellRange] = useState("");
-  const [spellComponents, setSpellComponents] = useState("");
-  const [spellDuration, setSpellDuration] = useState("");
-  const [spellDescription, setSpellDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const { createItem } = useHomebrew();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const itemTypes = ["Оружие", "Броня", "Зелье", "Кольцо", "Жезл", "Свиток", "Чудесный предмет"];
   const rarities = ["Обычный", "Необычный", "Редкий", "Очень редкий", "Легендарный", "Артефакт"];
-  const spellSchools = ["Воплощение", "Вызов", "Иллюзия", "Некромантия", "Ограждение", "Очарование", "Преобразование", "Прорицание"];
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
@@ -42,6 +40,35 @@ const HomebrewCreator = () => {
       case "Артефакт": return "text-accent";
       default: return "text-muted-foreground";
     }
+  };
+
+  const handleSave = async () => {
+    if (!user) {
+      toast({ title: "Войдите для сохранения", variant: "destructive" });
+      return;
+    }
+    if (!itemName || !itemType) {
+      toast({ title: "Заполните название и тип", variant: "destructive" });
+      return;
+    }
+    
+    setIsSaving(true);
+    await createItem({
+      name: itemName,
+      type: itemType,
+      rarity: itemRarity || undefined,
+      description: itemDescription || undefined,
+      effect: itemEffect || undefined,
+      is_public: false,
+    });
+    setIsSaving(false);
+    
+    // Reset form
+    setItemName("");
+    setItemType("");
+    setItemRarity("");
+    setItemDescription("");
+    setItemEffect("");
   };
 
   return (
@@ -129,6 +156,15 @@ const HomebrewCreator = () => {
                   className="bg-background border-border min-h-[80px]"
                 />
               </div>
+              
+              <Button 
+                onClick={handleSave} 
+                disabled={isSaving || !itemName || !itemType}
+                className="w-full bg-gradient-gold hover:opacity-90 gap-2"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Сохранить предмет
+              </Button>
             </div>
 
             {/* Preview */}
@@ -159,127 +195,12 @@ const HomebrewCreator = () => {
           </div>
         </TabsContent>
 
-        {/* Spell Creator */}
+        {/* Spell Creator Placeholder */}
         <TabsContent value="spell">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-muted-foreground mb-2 block">Название</label>
-                <Input
-                  value={spellName}
-                  onChange={(e) => setSpellName(e.target.value)}
-                  placeholder="Тень Разума"
-                  className="bg-background border-border"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-muted-foreground mb-2 block">Уровень</label>
-                  <Select value={spellLevel} onValueChange={setSpellLevel}>
-                    <SelectTrigger className="bg-background border-border">
-                      <SelectValue placeholder="Уровень" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Заговор</SelectItem>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((lvl) => (
-                        <SelectItem key={lvl} value={lvl.toString()}>{lvl} уровень</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-2 block">Школа</label>
-                  <Select value={spellSchool} onValueChange={setSpellSchool}>
-                    <SelectTrigger className="bg-background border-border">
-                      <SelectValue placeholder="Школа" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {spellSchools.map((school) => (
-                        <SelectItem key={school} value={school}>{school}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-muted-foreground mb-2 block">Время накладывания</label>
-                  <Input
-                    value={spellCastTime}
-                    onChange={(e) => setSpellCastTime(e.target.value)}
-                    placeholder="1 действие"
-                    className="bg-background border-border"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-2 block">Дистанция</label>
-                  <Input
-                    value={spellRange}
-                    onChange={(e) => setSpellRange(e.target.value)}
-                    placeholder="60 футов"
-                    className="bg-background border-border"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-muted-foreground mb-2 block">Компоненты</label>
-                  <Input
-                    value={spellComponents}
-                    onChange={(e) => setSpellComponents(e.target.value)}
-                    placeholder="В, С, М"
-                    className="bg-background border-border"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-2 block">Длительность</label>
-                  <Input
-                    value={spellDuration}
-                    onChange={(e) => setSpellDuration(e.target.value)}
-                    placeholder="Концентрация, 1 минута"
-                    className="bg-background border-border"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm text-muted-foreground mb-2 block">Описание</label>
-                <Textarea
-                  value={spellDescription}
-                  onChange={(e) => setSpellDescription(e.target.value)}
-                  placeholder="Опишите эффект заклинания..."
-                  className="bg-background border-border min-h-[120px]"
-                />
-              </div>
-            </div>
-
-            {/* Spell Preview */}
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">Предпросмотр</label>
-              <Card className="p-4 bg-gradient-arcane border-primary/30">
-                <div className="flex items-start gap-3 mb-3">
-                  <Sparkles className="w-8 h-8 text-primary gold-glow" />
-                  <div>
-                    <h3 className="font-serif font-bold text-lg">{spellName || "Название заклинания"}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {spellLevel === "0" ? "Заговор" : `${spellLevel || "?"} уровень`}, {spellSchool || "школа магии"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-                  <div><span className="text-muted-foreground">Время:</span> {spellCastTime || "—"}</div>
-                  <div><span className="text-muted-foreground">Дистанция:</span> {spellRange || "—"}</div>
-                  <div><span className="text-muted-foreground">Компоненты:</span> {spellComponents || "—"}</div>
-                  <div><span className="text-muted-foreground">Длительность:</span> {spellDuration || "—"}</div>
-                </div>
-
-                <p className="text-sm">{spellDescription || "Описание заклинания появится здесь..."}</p>
-              </Card>
-            </div>
+          <div className="text-center py-12">
+            <Sparkles className="w-16 h-16 text-primary/50 mx-auto mb-4" />
+            <h3 className="text-xl font-serif font-semibold mb-2">Создание заклинаний</h3>
+            <p className="text-muted-foreground">Редактор заклинаний в разработке</p>
           </div>
         </TabsContent>
 
@@ -288,27 +209,10 @@ const HomebrewCreator = () => {
           <div className="text-center py-12">
             <Shield className="w-16 h-16 text-primary/50 mx-auto mb-4" />
             <h3 className="text-xl font-serif font-semibold mb-2">Создание классов</h3>
-            <p className="text-muted-foreground mb-6">
-              Продвинутый редактор для создания кастомных классов и подклассов
-            </p>
-            <Button className="bg-gradient-gold hover:opacity-90">
-              Скоро
-            </Button>
+            <p className="text-muted-foreground">Редактор классов в разработке</p>
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* Actions */}
-      <div className="flex gap-3 justify-end mt-6 pt-6 border-t border-border">
-        <Button variant="outline" className="gap-2 border-primary/50">
-          <Eye className="w-4 h-4" />
-          Предпросмотр
-        </Button>
-        <Button className="bg-gradient-gold hover:opacity-90 gap-2">
-          <Save className="w-4 h-4" />
-          Сохранить
-        </Button>
-      </div>
     </Card>
   );
 };
