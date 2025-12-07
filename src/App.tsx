@@ -17,6 +17,7 @@ import Homebrew from "./pages/Homebrew";
 import GM from "./pages/GM";
 import Encyclopedia from "./pages/Encyclopedia";
 import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/world" element={<World />} />
             <Route path="/characters" element={<Characters />} />
             <Route path="/community" element={<Community />} />

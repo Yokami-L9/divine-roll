@@ -65,12 +65,14 @@ const Navigation = () => {
           <div className="flex items-center gap-2">
             {user ? (
               <>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg">
-                  <User className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium text-primary">
-                    {user.user_metadata?.username || user.email?.split('@')[0]}
-                  </span>
-                </div>
+                <Link to="/profile">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer">
+                    <User className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium text-primary">
+                      {user.user_metadata?.username || user.email?.split('@')[0]}
+                    </span>
+                  </div>
+                </Link>
                 <Button 
                   variant="outline" 
                   size="sm" 
