@@ -7,13 +7,33 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Wand2, LogIn, UserPlus, Loader2 } from "lucide-react";
+import { Wand2, LogIn, UserPlus, Loader2, Eye, EyeOff } from "lucide-react";
+import { z } from "zod";
+
+// Only allow Latin characters, numbers, and basic symbols for username
+const usernameRegex = /^[a-zA-Z0-9_.-]+$/;
+// Only allow Latin characters, numbers, and symbols for password
+const passwordRegex = /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]+$/;
+
+const emailSchema = z.string().trim().email({ message: "Некорректный email адрес" }).max(255);
+const usernameSchema = z.string().trim()
+  .min(3, { message: "Имя должно быть не менее 3 символов" })
+  .max(30, { message: "Имя должно быть не более 30 символов" })
+  .regex(usernameRegex, { message: "Только латинские буквы, цифры, _ . -" });
+const passwordSchema = z.string()
+  .min(6, { message: "Пароль должен быть не менее 6 символов" })
+  .max(100, { message: "Пароль должен быть не более 100 символов" })
+  .regex(passwordRegex, { message: "Только латинские буквы, цифры и символы" });
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { user, loading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -24,17 +44,79 @@ const Auth = () => {
     }
   }, [user, loading, navigate]);
 
+  // Filter input to only allow Latin characters for username
+  const handleUsernameChange = (value: string) => {
+    // Remove any non-Latin characters
+    const filtered = value.replace(/[^a-zA-Z0-9_.-]/g, '');
+    setUsername(filtered);
+    // Clear error when typing
+    if (errors.username) {
+      setErrors(prev => ({ ...prev, username: '' }));
+    }
+  };
+
+  // Filter input to only allow Latin characters and symbols for password
+  const handlePasswordChange = (value: string, field: 'password' | 'confirmPassword') => {
+    const filtered = value.replace(/[^a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/g, '');
+    if (field === 'password') {
+      setPassword(filtered);
+      if (errors.password) {
+        setErrors(prev => ({ ...prev, password: '' }));
+      }
+    } else {
+      setConfirmPassword(filtered);
+      if (errors.confirmPassword) {
+        setErrors(prev => ({ ...prev, confirmPassword: '' }));
+      }
+    }
+  };
+
+  const validateLoginForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
+      newErrors.email = emailResult.error.errors[0].message;
+    }
+
+    if (!password) {
+      newErrors.password = "Введите пароль";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateRegisterForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
+      newErrors.email = emailResult.error.errors[0].message;
+    }
+
+    const usernameResult = usernameSchema.safeParse(username);
+    if (!usernameResult.success) {
+      newErrors.username = usernameResult.error.errors[0].message;
+    }
+
+    const passwordResult = passwordSchema.safeParse(password);
+    if (!passwordResult.success) {
+      newErrors.password = passwordResult.error.errors[0].message;
+    }
+
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = "Пароли не совпадают";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
-      toast({
-        title: "Ошибка",
-        description: "Заполните все поля",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!validateLoginForm()) return;
 
     setIsSubmitting(true);
     const { error } = await signIn(email, password);
@@ -64,23 +146,7 @@ const Auth = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
-      toast({
-        title: "Ошибка",
-        description: "Заполните все поля",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: "Ошибка",
-        description: "Пароль должен быть не менее 6 символов",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!validateRegisterForm()) return;
 
     setIsSubmitting(true);
     const { error } = await signUp(email, password, username);
@@ -150,22 +216,42 @@ const Auth = () => {
                     type="email"
                     placeholder="your@email.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-background border-border"
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                    }}
+                    className={`bg-background border-border ${errors.email ? 'border-destructive' : ''}`}
                     disabled={isSubmitting}
                   />
+                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Пароль</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-background border-border"
-                    disabled={isSubmitting}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="login-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => handlePasswordChange(e.target.value, 'password')}
+                      className={`bg-background border-border pr-10 ${errors.password ? 'border-destructive' : ''}`}
+                      disabled={isSubmitting}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
                 </div>
                 <Button 
                   type="submit" 
@@ -189,12 +275,14 @@ const Auth = () => {
                   <Input
                     id="register-username"
                     type="text"
-                    placeholder="Мастер Подземелий"
+                    placeholder="DungeonMaster"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="bg-background border-border"
+                    onChange={(e) => handleUsernameChange(e.target.value)}
+                    className={`bg-background border-border ${errors.username ? 'border-destructive' : ''}`}
                     disabled={isSubmitting}
                   />
+                  <p className="text-xs text-muted-foreground">Только латинские буквы, цифры, _ . -</p>
+                  {errors.username && <p className="text-sm text-destructive">{errors.username}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="register-email">Email</Label>
@@ -203,22 +291,71 @@ const Auth = () => {
                     type="email"
                     placeholder="your@email.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-background border-border"
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                    }}
+                    className={`bg-background border-border ${errors.email ? 'border-destructive' : ''}`}
                     disabled={isSubmitting}
                   />
+                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="register-password">Пароль</Label>
-                  <Input
-                    id="register-password"
-                    type="password"
-                    placeholder="Минимум 6 символов"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-background border-border"
-                    disabled={isSubmitting}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="register-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Минимум 6 символов"
+                      value={password}
+                      onChange={(e) => handlePasswordChange(e.target.value, 'password')}
+                      className={`bg-background border-border pr-10 ${errors.password ? 'border-destructive' : ''}`}
+                      disabled={isSubmitting}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Только латинские буквы, цифры и символы</p>
+                  {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-confirm-password">Подтверждение пароля</Label>
+                  <div className="relative">
+                    <Input
+                      id="register-confirm-password"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Повторите пароль"
+                      value={confirmPassword}
+                      onChange={(e) => handlePasswordChange(e.target.value, 'confirmPassword')}
+                      className={`bg-background border-border pr-10 ${errors.confirmPassword ? 'border-destructive' : ''}`}
+                      disabled={isSubmitting}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword}</p>}
                 </div>
                 <Button 
                   type="submit" 
