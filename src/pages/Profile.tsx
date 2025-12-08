@@ -1,28 +1,34 @@
 import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Save, Loader2, LogIn, Sword, Users, Map, ScrollText, BookOpen } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { User, Save, Loader2, LogIn, LogOut, Sword, Users, Map, ScrollText, BookOpen, Shield, Crown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useCharacters } from "@/hooks/useCharacters";
 import { useNPCs } from "@/hooks/useNPCs";
 import { useMaps } from "@/hooks/useMaps";
 import { useQuests } from "@/hooks/useQuests";
 import { useHomebrew } from "@/hooks/useHomebrew";
-import { Link } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const Profile = () => {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, updateProfile } = useProfile();
+  const { roles, isAdmin, isModerator } = useUserRole();
   const { characters } = useCharacters();
   const { npcs } = useNPCs();
   const { maps } = useMaps();
   const { quests } = useQuests();
   const { items: homebrewItems } = useHomebrew();
+  const { toast } = useToast();
 
   const [username, setUsername] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -38,6 +44,40 @@ const Profile = () => {
     setIsSaving(true);
     await updateProfile({ username: username.trim() });
     setIsSaving(false);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Выход выполнен",
+      description: "Вы успешно вышли из аккаунта",
+    });
+    navigate("/");
+  };
+
+  const getRoleBadge = () => {
+    if (isAdmin) {
+      return (
+        <Badge className="bg-gradient-to-r from-amber-500 to-yellow-400 text-black gap-1">
+          <Crown className="w-3 h-3" />
+          Администратор
+        </Badge>
+      );
+    }
+    if (isModerator) {
+      return (
+        <Badge className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white gap-1">
+          <Shield className="w-3 h-3" />
+          Модератор
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="secondary" className="gap-1">
+        <User className="w-3 h-3" />
+        Пользователь
+      </Badge>
+    );
   };
 
   const stats = [
@@ -93,7 +133,8 @@ const Profile = () => {
               <h2 className="text-xl font-serif font-semibold">
                 {username || user.email?.split("@")[0]}
               </h2>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
+              <p className="text-sm text-muted-foreground mb-2">{user.email}</p>
+              {getRoleBadge()}
             </div>
 
             {profileLoading ? (
@@ -122,6 +163,15 @@ const Profile = () => {
                     <Save className="w-4 h-4" />
                   )}
                   Сохранить
+                </Button>
+                
+                <Button
+                  onClick={handleSignOut}
+                  variant="outline"
+                  className="w-full mt-4 gap-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Выйти из аккаунта
                 </Button>
               </div>
             )}
