@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { User, Save, Loader2, LogIn, LogOut, Sword, Users, Map, ScrollText, BookOpen, Shield, Crown } from "lucide-react";
+import { User, Save, Loader2, LogIn, LogOut, Sword, Users, Map, ScrollText, BookOpen, Shield, Crown, Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -17,6 +17,7 @@ import { useMaps } from "@/hooks/useMaps";
 import { useQuests } from "@/hooks/useQuests";
 import { useHomebrew } from "@/hooks/useHomebrew";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -29,9 +30,11 @@ const Profile = () => {
   const { quests } = useQuests();
   const { items: homebrewItems } = useHomebrew();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [username, setUsername] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   useEffect(() => {
     if (profile?.username) {
@@ -44,6 +47,70 @@ const Profile = () => {
     setIsSaving(true);
     await updateProfile({ username: username.trim() });
     setIsSaving(false);
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Неверный формат",
+        description: "Поддерживаются только JPEG, PNG, WebP и GIF",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Файл слишком большой",
+        description: "Максимальный размер файла 5 МБ",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      await updateProfile({ avatar_url: `${publicUrl}?t=${Date.now()}` });
+
+      toast({
+        title: "Аватар обновлён",
+        description: "Ваш аватар успешно загружен",
+      });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить аватар",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleSignOut = async () => {
@@ -124,12 +191,32 @@ const Profile = () => {
           {/* Profile Info */}
           <Card className="p-6 bg-card border-border lg:col-span-1">
             <div className="flex flex-col items-center text-center mb-6">
-              <Avatar className="w-24 h-24 mb-4 border-2 border-primary">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-gradient-arcane text-2xl font-serif">
-                  {username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "?"}
-                </AvatarFallback>
-              </Avatar>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarUpload}
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+              />
+              <div className="relative group">
+                <Avatar className="w-24 h-24 mb-4 border-2 border-primary cursor-pointer" onClick={handleAvatarClick}>
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-gradient-arcane text-2xl font-serif">
+                    {username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <button
+                  onClick={handleAvatarClick}
+                  disabled={isUploadingAvatar}
+                  className="absolute bottom-3 right-0 p-1.5 bg-primary rounded-full text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {isUploadingAvatar ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
               <h2 className="text-xl font-serif font-semibold">
                 {username || user.email?.split("@")[0]}
               </h2>
