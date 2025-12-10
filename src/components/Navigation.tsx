@@ -29,7 +29,7 @@ const Navigation = () => {
     { icon: Dices, label: "Инструменты", path: "/tools" },
     { icon: Map, label: "Карты", path: "/maps" },
     { icon: Wand2, label: "Homebrew", path: "/homebrew" },
-    { icon: Library, label: "Правила", path: "/encyclopedia" },
+    { icon: Library, label: "База знаний", path: "/rulebook" },
     { icon: MessageSquare, label: "Сообщество", path: "/community" },
     { icon: Shield, label: "GM", path: "/gm" },
   ];
