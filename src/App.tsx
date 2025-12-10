@@ -16,6 +16,7 @@ import Maps from "./pages/Maps";
 import Homebrew from "./pages/Homebrew";
 import GM from "./pages/GM";
 import Encyclopedia from "./pages/Encyclopedia";
+import Rulebook from "./pages/Rulebook";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/homebrew" element={<Homebrew />} />
             <Route path="/gm" element={<GM />} />
             <Route path="/encyclopedia" element={<Encyclopedia />} />
+            <Route path="/rulebook" element={<Rulebook />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
