@@ -1,6 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Race } from "@/hooks/useRulebook";
 
 // Import race images
@@ -41,7 +40,12 @@ const abilityNames: Record<string, string> = {
   "Харизма": "Харизма",
 };
 
-export function RaceCard({ race }: { race: Race }) {
+interface RaceCardProps {
+  race: Race;
+  onClick?: () => void;
+}
+
+export function RaceCard({ race, onClick }: RaceCardProps) {
   const bonuses = Object.entries(race.ability_bonuses || {})
     .filter(([, value]) => value !== 0)
     .map(([key, value]) => `${abilityNames[key] || key} +${value}`)
@@ -50,7 +54,10 @@ export function RaceCard({ race }: { race: Race }) {
   const raceImage = race.name_en ? raceImages[race.name_en] : null;
 
   return (
-    <Card className="h-full overflow-hidden group hover:shadow-lg transition-shadow">
+    <Card 
+      className="h-full overflow-hidden group hover:shadow-lg hover:border-primary/50 transition-all cursor-pointer"
+      onClick={onClick}
+    >
       {raceImage && (
         <div className="h-48 overflow-hidden relative">
           <img 
@@ -85,78 +92,17 @@ export function RaceCard({ race }: { race: Race }) {
         {bonuses && (
           <div>
             <span className="text-xs text-muted-foreground">Бонусы:</span>
-            <p className="font-medium text-xs">{bonuses}</p>
+            <p className="font-medium text-xs text-primary">{bonuses}</p>
           </div>
-        )}
-
-        {race.languages && race.languages.length > 0 && (
-          <div>
-            <span className="text-xs text-muted-foreground">Языки:</span>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {race.languages.map((lang) => (
-                <Badge key={lang} variant="outline" className="text-[10px] px-1.5 py-0">
-                  {lang}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {race.traits && race.traits.length > 0 && (
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="traits" className="border-none">
-              <AccordionTrigger className="py-1.5 text-xs hover:no-underline">
-                Особенности ({race.traits.length})
-              </AccordionTrigger>
-              <AccordionContent>
-                <ul className="space-y-0.5 text-xs">
-                  {race.traits.map((trait, i) => (
-                    <li key={i} className="flex items-start gap-1.5">
-                      <span className="text-primary">•</span>
-                      <span className="text-muted-foreground">{trait}</span>
-                    </li>
-                  ))}
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
         )}
 
         {race.subraces && race.subraces.length > 0 && (
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="subraces" className="border-none">
-              <AccordionTrigger className="py-1.5 text-xs hover:no-underline">
-                Подрасы ({race.subraces.length})
-              </AccordionTrigger>
-              <AccordionContent className="space-y-2">
-                {race.subraces.map((subrace, i) => (
-                  <div 
-                    key={i} 
-                    className="border-l-2 border-primary/30 pl-2 py-1 hover:bg-accent/50 rounded-r transition-colors"
-                  >
-                    <p className="font-medium text-xs">{subrace.name}</p>
-                    {subrace.ability_bonus && Object.keys(subrace.ability_bonus).length > 0 && (
-                      <p className="text-[10px] text-muted-foreground">
-                        {Object.entries(subrace.ability_bonus)
-                          .map(([key, value]) => `${abilityNames[key] || key} +${value}`)
-                          .join(", ")}
-                      </p>
-                    )}
-                    {subrace.traits && subrace.traits.length > 0 && (
-                      <ul className="text-[10px] mt-0.5 space-y-0">
-                        {subrace.traits.slice(0, 2).map((trait, j) => (
-                          <li key={j} className="text-muted-foreground truncate">• {trait}</li>
-                        ))}
-                        {subrace.traits.length > 2 && (
-                          <li className="text-muted-foreground">...ещё {subrace.traits.length - 2}</li>
-                        )}
-                      </ul>
-                    )}
-                  </div>
-                ))}
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span>Подрасы:</span>
+            <Badge variant="outline" className="text-[10px]">
+              {race.subraces.length}
+            </Badge>
+          </div>
         )}
       </CardContent>
     </Card>
