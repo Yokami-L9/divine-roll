@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      backgrounds: {
+        Row: {
+          bonds: string[] | null
+          created_at: string
+          description: string | null
+          equipment: string[] | null
+          feature_description: string | null
+          feature_name: string | null
+          flaws: string[] | null
+          id: string
+          ideals: string[] | null
+          languages_count: number | null
+          name: string
+          name_en: string | null
+          personality_traits: string[] | null
+          skill_proficiencies: string[] | null
+          tool_proficiencies: string[] | null
+        }
+        Insert: {
+          bonds?: string[] | null
+          created_at?: string
+          description?: string | null
+          equipment?: string[] | null
+          feature_description?: string | null
+          feature_name?: string | null
+          flaws?: string[] | null
+          id?: string
+          ideals?: string[] | null
+          languages_count?: number | null
+          name: string
+          name_en?: string | null
+          personality_traits?: string[] | null
+          skill_proficiencies?: string[] | null
+          tool_proficiencies?: string[] | null
+        }
+        Update: {
+          bonds?: string[] | null
+          created_at?: string
+          description?: string | null
+          equipment?: string[] | null
+          feature_description?: string | null
+          feature_name?: string | null
+          flaws?: string[] | null
+          id?: string
+          ideals?: string[] | null
+          languages_count?: number | null
+          name?: string
+          name_en?: string | null
+          personality_traits?: string[] | null
+          skill_proficiencies?: string[] | null
+          tool_proficiencies?: string[] | null
+        }
+        Relationships: []
+      }
       characters: {
         Row: {
           backstory: string | null
@@ -71,6 +125,165 @@ export type Database = {
           updated_at?: string
           user_id?: string
           wisdom?: number
+        }
+        Relationships: []
+      }
+      classes: {
+        Row: {
+          armor_proficiencies: string[] | null
+          created_at: string
+          description: string | null
+          features: Json | null
+          hit_die: number
+          id: string
+          name: string
+          name_en: string | null
+          primary_ability: string | null
+          saving_throws: string[] | null
+          skill_choices: Json | null
+          spellcasting: Json | null
+          weapon_proficiencies: string[] | null
+        }
+        Insert: {
+          armor_proficiencies?: string[] | null
+          created_at?: string
+          description?: string | null
+          features?: Json | null
+          hit_die: number
+          id?: string
+          name: string
+          name_en?: string | null
+          primary_ability?: string | null
+          saving_throws?: string[] | null
+          skill_choices?: Json | null
+          spellcasting?: Json | null
+          weapon_proficiencies?: string[] | null
+        }
+        Update: {
+          armor_proficiencies?: string[] | null
+          created_at?: string
+          description?: string | null
+          features?: Json | null
+          hit_die?: number
+          id?: string
+          name?: string
+          name_en?: string | null
+          primary_ability?: string | null
+          saving_throws?: string[] | null
+          skill_choices?: Json | null
+          spellcasting?: Json | null
+          weapon_proficiencies?: string[] | null
+        }
+        Relationships: []
+      }
+      conditions: {
+        Row: {
+          created_at: string
+          description: string
+          effects: string[] | null
+          id: string
+          name: string
+          name_en: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          effects?: string[] | null
+          id?: string
+          name: string
+          name_en?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          effects?: string[] | null
+          id?: string
+          name?: string
+          name_en?: string | null
+        }
+        Relationships: []
+      }
+      equipment: {
+        Row: {
+          armor_class: string | null
+          category: string
+          cost: string | null
+          created_at: string
+          damage: string | null
+          damage_type: string | null
+          description: string | null
+          id: string
+          name: string
+          name_en: string | null
+          properties: string[] | null
+          stealth_disadvantage: boolean | null
+          strength_requirement: number | null
+          subcategory: string | null
+          weight: number | null
+        }
+        Insert: {
+          armor_class?: string | null
+          category: string
+          cost?: string | null
+          created_at?: string
+          damage?: string | null
+          damage_type?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          name_en?: string | null
+          properties?: string[] | null
+          stealth_disadvantage?: boolean | null
+          strength_requirement?: number | null
+          subcategory?: string | null
+          weight?: number | null
+        }
+        Update: {
+          armor_class?: string | null
+          category?: string
+          cost?: string | null
+          created_at?: string
+          damage?: string | null
+          damage_type?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          name_en?: string | null
+          properties?: string[] | null
+          stealth_disadvantage?: boolean | null
+          strength_requirement?: number | null
+          subcategory?: string | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
+      feats: {
+        Row: {
+          benefits: Json | null
+          created_at: string
+          description: string
+          id: string
+          name: string
+          name_en: string | null
+          prerequisite: string | null
+        }
+        Insert: {
+          benefits?: Json | null
+          created_at?: string
+          description: string
+          id?: string
+          name: string
+          name_en?: string | null
+          prerequisite?: string | null
+        }
+        Update: {
+          benefits?: Json | null
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          name_en?: string | null
+          prerequisite?: string | null
         }
         Relationships: []
       }
@@ -265,6 +478,81 @@ export type Database = {
           },
         ]
       }
+      races: {
+        Row: {
+          ability_bonuses: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          languages: string[] | null
+          name: string
+          name_en: string | null
+          size: string | null
+          speed: number | null
+          subraces: Json | null
+          traits: Json | null
+        }
+        Insert: {
+          ability_bonuses?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          languages?: string[] | null
+          name: string
+          name_en?: string | null
+          size?: string | null
+          speed?: number | null
+          subraces?: Json | null
+          traits?: Json | null
+        }
+        Update: {
+          ability_bonuses?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          languages?: string[] | null
+          name?: string
+          name_en?: string | null
+          size?: string | null
+          speed?: number | null
+          subraces?: Json | null
+          traits?: Json | null
+        }
+        Relationships: []
+      }
+      rules: {
+        Row: {
+          book: string | null
+          category: string
+          chapter: number | null
+          content: string
+          created_at: string
+          id: string
+          subsections: Json | null
+          title: string
+        }
+        Insert: {
+          book?: string | null
+          category: string
+          chapter?: number | null
+          content: string
+          created_at?: string
+          id?: string
+          subsections?: Json | null
+          title: string
+        }
+        Update: {
+          book?: string | null
+          category?: string
+          chapter?: number | null
+          content?: string
+          created_at?: string
+          id?: string
+          subsections?: Json | null
+          title?: string
+        }
+        Relationships: []
+      }
       session_notes: {
         Row: {
           created_at: string
@@ -304,6 +592,60 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      spells: {
+        Row: {
+          casting_time: string
+          classes: string[] | null
+          components: string
+          concentration: boolean | null
+          created_at: string
+          description: string
+          duration: string
+          higher_levels: string | null
+          id: string
+          level: number
+          name: string
+          name_en: string | null
+          range: string
+          ritual: boolean | null
+          school: string
+        }
+        Insert: {
+          casting_time: string
+          classes?: string[] | null
+          components: string
+          concentration?: boolean | null
+          created_at?: string
+          description: string
+          duration: string
+          higher_levels?: string | null
+          id?: string
+          level?: number
+          name: string
+          name_en?: string | null
+          range: string
+          ritual?: boolean | null
+          school: string
+        }
+        Update: {
+          casting_time?: string
+          classes?: string[] | null
+          components?: string
+          concentration?: boolean | null
+          created_at?: string
+          description?: string
+          duration?: string
+          higher_levels?: string | null
+          id?: string
+          level?: number
+          name?: string
+          name_en?: string | null
+          range?: string
+          ritual?: boolean | null
+          school?: string
         }
         Relationships: []
       }
