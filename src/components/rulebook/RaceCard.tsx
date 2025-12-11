@@ -1,12 +1,30 @@
-import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
-import { Loader2, ImageIcon, Sparkles } from "lucide-react";
 import { Race } from "@/hooks/useRulebook";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+
+// Import race images
+import dwarfImg from "@/assets/races/dwarf.png";
+import elfImg from "@/assets/races/elf.png";
+import humanImg from "@/assets/races/human.png";
+import halflingImg from "@/assets/races/halfling.png";
+import gnomeImg from "@/assets/races/gnome.png";
+import dragonbornImg from "@/assets/races/dragonborn.png";
+import halfElfImg from "@/assets/races/half-elf.png";
+import halfOrcImg from "@/assets/races/half-orc.png";
+import tieflingImg from "@/assets/races/tiefling.png";
+
+const raceImages: Record<string, string> = {
+  "Dwarf": dwarfImg,
+  "Elf": elfImg,
+  "Human": humanImg,
+  "Halfling": halflingImg,
+  "Gnome": gnomeImg,
+  "Dragonborn": dragonbornImg,
+  "Half-Elf": halfElfImg,
+  "Half-Orc": halfOrcImg,
+  "Tiefling": tieflingImg,
+};
 
 const abilityNames: Record<string, string> = {
   strength: "Сила",
@@ -15,91 +33,36 @@ const abilityNames: Record<string, string> = {
   intelligence: "Интеллект",
   wisdom: "Мудрость",
   charisma: "Харизма",
+  "Сила": "Сила",
+  "Ловкость": "Ловкость",
+  "Телосложение": "Телосложение",
+  "Интеллект": "Интеллект",
+  "Мудрость": "Мудрость",
+  "Харизма": "Харизма",
 };
 
 export function RaceCard({ race }: { race: Race }) {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [raceImage, setRaceImage] = useState<string | null>(null);
-  const [hoveredSubrace, setHoveredSubrace] = useState<string | null>(null);
-  const [subraceImages, setSubraceImages] = useState<Record<string, string>>({});
-
   const bonuses = Object.entries(race.ability_bonuses || {})
     .filter(([, value]) => value !== 0)
     .map(([key, value]) => `${abilityNames[key] || key} +${value}`)
     .join(", ");
 
-  const generateImage = async (subraceName?: string) => {
-    setIsGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-race-image', {
-        body: {
-          raceName: race.name,
-          subraceNname: subraceName,
-          raceNameEn: race.name_en
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.imageUrl) {
-        if (subraceName) {
-          setSubraceImages(prev => ({ ...prev, [subraceName]: data.imageUrl }));
-        } else {
-          setRaceImage(data.imageUrl);
-        }
-        toast.success(`Изображение ${subraceName || race.name} создано!`);
-      }
-    } catch (error) {
-      console.error("Error generating image:", error);
-      toast.error("Ошибка генерации изображения");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const currentImage = hoveredSubrace 
-    ? subraceImages[hoveredSubrace] 
-    : raceImage;
+  const raceImage = race.name_en ? raceImages[race.name_en] : null;
 
   return (
-    <Card className="h-full overflow-hidden">
-      <div className="relative">
-        {currentImage ? (
-          <div className="h-48 overflow-hidden">
-            <img 
-              src={currentImage} 
-              alt={hoveredSubrace || race.name}
-              className="w-full h-full object-cover transition-all duration-300"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
-          </div>
-        ) : (
-          <div className="h-32 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => generateImage()}
-              disabled={isGenerating}
-              className="gap-2"
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              Сгенерировать изображение
-            </Button>
-          </div>
-        )}
-        
-        {hoveredSubrace && (
-          <div className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium">
-            {hoveredSubrace}
-          </div>
-        )}
-      </div>
+    <Card className="h-full overflow-hidden group hover:shadow-lg transition-shadow">
+      {raceImage && (
+        <div className="h-48 overflow-hidden relative">
+          <img 
+            src={raceImage} 
+            alt={race.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+        </div>
+      )}
 
-      <CardHeader className="pb-2">
+      <CardHeader className={raceImage ? "pt-3 pb-2" : "pb-2"}>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">{race.name}</CardTitle>
           <Badge variant="secondary" className="text-xs">{race.name_en}</Badge>
@@ -169,40 +132,9 @@ export function RaceCard({ race }: { race: Race }) {
                 {race.subraces.map((subrace, i) => (
                   <div 
                     key={i} 
-                    className="border-l-2 border-primary/30 pl-2 py-1 cursor-pointer hover:bg-accent/50 rounded-r transition-colors"
-                    onMouseEnter={() => setHoveredSubrace(subrace.name)}
-                    onMouseLeave={() => setHoveredSubrace(null)}
+                    className="border-l-2 border-primary/30 pl-2 py-1 hover:bg-accent/50 rounded-r transition-colors"
                   >
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-xs">{subrace.name}</p>
-                      {!subraceImages[subrace.name] && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            generateImage(subrace.name);
-                          }}
-                          disabled={isGenerating}
-                        >
-                          {isGenerating ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <ImageIcon className="h-3 w-3" />
-                          )}
-                        </Button>
-                      )}
-                      {subraceImages[subrace.name] && (
-                        <div className="w-6 h-6 rounded overflow-hidden">
-                          <img 
-                            src={subraceImages[subrace.name]} 
-                            alt={subrace.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                    </div>
+                    <p className="font-medium text-xs">{subrace.name}</p>
                     {subrace.ability_bonus && Object.keys(subrace.ability_bonus).length > 0 && (
                       <p className="text-[10px] text-muted-foreground">
                         {Object.entries(subrace.ability_bonus)
