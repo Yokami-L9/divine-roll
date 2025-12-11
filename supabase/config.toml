@@ -1,1 +1,4 @@
 project_id = "jiejcagmjmwxryqteddp"
+
+[functions.generate-race-image]
+verify_jwt = false
