@@ -1,14 +1,23 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Scroll, Skull, ChevronRight } from "lucide-react";
+import { BookOpen, Scroll, Skull, ChevronRight, Users, Swords, Sparkles, Shield, AlertTriangle, BookText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useRaces, useClasses, useBackgrounds, useSpells, useEquipment, useConditions, useRules } from "@/hooks/useRulebook";
+import { RaceCard } from "@/components/rulebook/RaceCard";
+import { ClassCard } from "@/components/rulebook/ClassCard";
+import { SpellCard } from "@/components/rulebook/SpellCard";
+import { EquipmentTable } from "@/components/rulebook/EquipmentTable";
+import { ConditionCard } from "@/components/rulebook/ConditionCard";
+import { RuleSection } from "@/components/rulebook/RuleSection";
+import { Badge } from "@/components/ui/badge";
 
 interface BookPart {
   id: string;
   title: string;
   description: string;
-  content: React.ReactNode;
+  icon: React.ReactNode;
 }
 
 interface Book {
@@ -26,24 +35,12 @@ const books: Book[] = [
     icon: <BookOpen className="h-5 w-5" />,
     description: "Основные правила для игроков, создание персонажей, расы, классы, заклинания и снаряжение",
     parts: [
-      {
-        id: "part1",
-        title: "Часть 1: Создание персонажа",
-        description: "Расы, классы, предыстории и характеристики",
-        content: <PlayerHandbookPart1 />,
-      },
-      {
-        id: "part2",
-        title: "Часть 2: Игра",
-        description: "Правила игры, сражения и приключения",
-        content: <PlayerHandbookPart2 />,
-      },
-      {
-        id: "part3",
-        title: "Часть 3: Магия",
-        description: "Заклинания и магические предметы",
-        content: <PlayerHandbookPart3 />,
-      },
+      { id: "races", title: "Расы", description: "Играбельные расы и их особенности", icon: <Users className="h-4 w-4" /> },
+      { id: "classes", title: "Классы", description: "Классы персонажей и их умения", icon: <Swords className="h-4 w-4" /> },
+      { id: "spells", title: "Заклинания", description: "Список заклинаний всех школ магии", icon: <Sparkles className="h-4 w-4" /> },
+      { id: "equipment", title: "Снаряжение", description: "Оружие, доспехи и предметы", icon: <Shield className="h-4 w-4" /> },
+      { id: "conditions", title: "Состояния", description: "Боевые состояния и их эффекты", icon: <AlertTriangle className="h-4 w-4" /> },
+      { id: "rules", title: "Правила", description: "Основные правила игры", icon: <BookText className="h-4 w-4" /> },
     ],
   },
   {
@@ -52,24 +49,9 @@ const books: Book[] = [
     icon: <Scroll className="h-5 w-5" />,
     description: "Руководство для Мастера Подземелий по созданию миров и проведению игр",
     parts: [
-      {
-        id: "part1",
-        title: "Часть 1: Мастер Миров",
-        description: "Создание миров, пантеонов и цивилизаций",
-        content: <ComingSoon title="Книга Мастера: Часть 1" />,
-      },
-      {
-        id: "part2",
-        title: "Часть 2: Мастер Приключений",
-        description: "Создание приключений и сюжетов",
-        content: <ComingSoon title="Книга Мастера: Часть 2" />,
-      },
-      {
-        id: "part3",
-        title: "Часть 3: Правила Мастера",
-        description: "Дополнительные правила и варианты",
-        content: <ComingSoon title="Книга Мастера: Часть 3" />,
-      },
+      { id: "part1", title: "Часть 1: Мастер Миров", description: "Создание миров, пантеонов и цивилизаций", icon: <BookOpen className="h-4 w-4" /> },
+      { id: "part2", title: "Часть 2: Мастер Приключений", description: "Создание приключений и сюжетов", icon: <BookOpen className="h-4 w-4" /> },
+      { id: "part3", title: "Часть 3: Правила Мастера", description: "Дополнительные правила и варианты", icon: <BookOpen className="h-4 w-4" /> },
     ],
   },
   {
@@ -78,24 +60,9 @@ const books: Book[] = [
     icon: <Skull className="h-5 w-5" />,
     description: "Монстры, существа и NPC для ваших приключений",
     parts: [
-      {
-        id: "part1",
-        title: "Часть 1: Монстры A-G",
-        description: "Аболеты, Драконы, Гоблины и другие",
-        content: <ComingSoon title="Бестиарий: Часть 1" />,
-      },
-      {
-        id: "part2",
-        title: "Часть 2: Монстры H-O",
-        description: "Химеры, Личи, Орки и другие",
-        content: <ComingSoon title="Бестиарий: Часть 2" />,
-      },
-      {
-        id: "part3",
-        title: "Часть 3: Монстры P-Z",
-        description: "Призраки, Тролли, Зомби и другие",
-        content: <ComingSoon title="Бестиарий: Часть 3" />,
-      },
+      { id: "part1", title: "Часть 1: Монстры A-G", description: "Аболеты, Драконы, Гоблины и другие", icon: <Skull className="h-4 w-4" /> },
+      { id: "part2", title: "Часть 2: Монстры H-O", description: "Химеры, Личи, Орки и другие", icon: <Skull className="h-4 w-4" /> },
+      { id: "part3", title: "Часть 3: Монстры P-Z", description: "Призраки, Тролли, Зомби и другие", icon: <Skull className="h-4 w-4" /> },
     ],
   },
 ];
@@ -112,37 +79,222 @@ function ComingSoon({ title }: { title: string }) {
   );
 }
 
-function PlayerHandbookPart1() {
+function RacesSection() {
+  const { data: races, isLoading } = useRaces();
+  const [search, setSearch] = useState("");
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const filteredRaces = races?.filter(
+    (race) =>
+      race.name.toLowerCase().includes(search.toLowerCase()) ||
+      race.name_en?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
-      <p className="text-muted-foreground">
-        Загрузите распакованный PDF файл Книги Игрока для отображения полного содержимого.
-      </p>
-      <ComingSoon title="Книга Игрока: Часть 1" />
+      <Input
+        placeholder="Поиск расы..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="max-w-md"
+      />
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredRaces?.map((race) => (
+          <RaceCard key={race.id} race={race} />
+        ))}
+      </div>
     </div>
   );
 }
 
-function PlayerHandbookPart2() {
+function ClassesSection() {
+  const { data: classes, isLoading } = useClasses();
+  const [search, setSearch] = useState("");
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const filteredClasses = classes?.filter(
+    (cls) =>
+      cls.name.toLowerCase().includes(search.toLowerCase()) ||
+      cls.name_en?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
-      <p className="text-muted-foreground">
-        Загрузите распакованный PDF файл Книги Игрока для отображения полного содержимого.
-      </p>
-      <ComingSoon title="Книга Игрока: Часть 2" />
+      <Input
+        placeholder="Поиск класса..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="max-w-md"
+      />
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredClasses?.map((cls) => (
+          <ClassCard key={cls.id} characterClass={cls} />
+        ))}
+      </div>
     </div>
   );
 }
 
-function PlayerHandbookPart3() {
+function SpellsSection() {
+  const { data: spells, isLoading } = useSpells();
+  const [search, setSearch] = useState("");
+  const [levelFilter, setLevelFilter] = useState<number | null>(null);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const filteredSpells = spells?.filter((spell) => {
+    const matchesSearch =
+      spell.name.toLowerCase().includes(search.toLowerCase()) ||
+      spell.name_en?.toLowerCase().includes(search.toLowerCase());
+    const matchesLevel = levelFilter === null || spell.level === levelFilter;
+    return matchesSearch && matchesLevel;
+  });
+
+  const levels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
   return (
     <div className="space-y-6">
-      <p className="text-muted-foreground">
-        Загрузите распакованный PDF файл Книги Игрока для отображения полного содержимого.
-      </p>
-      <ComingSoon title="Книга Игрока: Часть 3" />
+      <div className="flex flex-wrap gap-4">
+        <Input
+          placeholder="Поиск заклинания..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-md"
+        />
+        <div className="flex flex-wrap gap-1">
+          <Badge
+            variant={levelFilter === null ? "default" : "outline"}
+            className="cursor-pointer"
+            onClick={() => setLevelFilter(null)}
+          >
+            Все
+          </Badge>
+          {levels.map((level) => (
+            <Badge
+              key={level}
+              variant={levelFilter === level ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setLevelFilter(level)}
+            >
+              {level === 0 ? "Заговоры" : `${level} ур.`}
+            </Badge>
+          ))}
+        </div>
+      </div>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredSpells?.map((spell) => (
+          <SpellCard key={spell.id} spell={spell} />
+        ))}
+      </div>
     </div>
   );
+}
+
+function EquipmentSection() {
+  const { data: equipment, isLoading } = useEquipment();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return <EquipmentTable equipment={equipment || []} />;
+}
+
+function ConditionsSection() {
+  const { data: conditions, isLoading } = useConditions();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {conditions?.map((condition) => (
+        <ConditionCard key={condition.id} condition={condition} />
+      ))}
+    </div>
+  );
+}
+
+function RulesSection() {
+  const { data: rules, isLoading } = useRules();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const groupedRules = rules?.reduce((acc, rule) => {
+    if (!acc[rule.category]) acc[rule.category] = [];
+    acc[rule.category].push(rule);
+    return acc;
+  }, {} as Record<string, typeof rules>);
+
+  return (
+    <div className="space-y-8">
+      {groupedRules &&
+        Object.entries(groupedRules).map(([category, categoryRules]) => (
+          <div key={category}>
+            <h3 className="text-xl font-semibold mb-4">{category}</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              {categoryRules?.map((rule) => (
+                <RuleSection key={rule.id} rule={rule} />
+              ))}
+            </div>
+          </div>
+        ))}
+    </div>
+  );
+}
+
+function PlayerHandbookContent({ partId }: { partId: string }) {
+  switch (partId) {
+    case "races":
+      return <RacesSection />;
+    case "classes":
+      return <ClassesSection />;
+    case "spells":
+      return <SpellsSection />;
+    case "equipment":
+      return <EquipmentSection />;
+    case "conditions":
+      return <ConditionsSection />;
+    case "rules":
+      return <RulesSection />;
+    default:
+      return <ComingSoon title="Раздел" />;
+  }
 }
 
 export default function Rulebook() {
@@ -156,7 +308,14 @@ export default function Rulebook() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Button variant="link" className="p-0 h-auto" onClick={() => { setSelectedBook(null); setSelectedPart(null); }}>
+          <Button
+            variant="link"
+            className="p-0 h-auto"
+            onClick={() => {
+              setSelectedBook(null);
+              setSelectedPart(null);
+            }}
+          >
             База знаний
           </Button>
           <ChevronRight className="h-4 w-4" />
@@ -167,10 +326,21 @@ export default function Rulebook() {
           <span className="text-foreground">{currentPart.title}</span>
         </div>
 
-        <h1 className="text-3xl font-bold mb-2">{currentPart.title}</h1>
-        <p className="text-muted-foreground mb-8">{currentPart.description}</p>
+        <div className="flex items-center gap-3 mb-8">
+          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            {currentPart.icon}
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold">{currentPart.title}</h1>
+            <p className="text-muted-foreground">{currentPart.description}</p>
+          </div>
+        </div>
 
-        {currentPart.content}
+        {currentBook.id === "player" ? (
+          <PlayerHandbookContent partId={currentPart.id} />
+        ) : (
+          <ComingSoon title={currentPart.title} />
+        )}
       </div>
     );
   }
@@ -196,7 +366,7 @@ export default function Rulebook() {
           </div>
         </div>
 
-        <div className="grid gap-4 mt-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
           {currentBook.parts.map((part) => (
             <Card
               key={part.id}
@@ -204,11 +374,18 @@ export default function Rulebook() {
               onClick={() => setSelectedPart(part.id)}
             >
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  {part.title}
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </CardTitle>
-                <CardDescription>{part.description}</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    {part.icon}
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="flex items-center justify-between">
+                      {part.title}
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </CardTitle>
+                    <CardDescription>{part.description}</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
             </Card>
           ))}
@@ -244,9 +421,7 @@ export default function Rulebook() {
               <CardDescription>{book.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-muted-foreground">
-                {book.parts.length} части
-              </div>
+              <div className="text-sm text-muted-foreground">{book.parts.length} разделов</div>
             </CardContent>
           </Card>
         ))}
