@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { Wand2, MessageSquare, Loader2, Cuboid } from "lucide-react";
+import { Wand2, MessageSquare, Loader2, Cuboid, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Figure3DViewer } from "./Figure3DViewer";
@@ -16,71 +15,11 @@ interface FigureGeneratorProps {
   updateCharacter: (updates: Partial<CharacterData>) => void;
 }
 
-type TaskStatus = "PENDING" | "IN_PROGRESS" | "SUCCEEDED" | "FAILED" | "EXPIRED";
-
 export function FigureGenerator({ character, updateCharacter }: FigureGeneratorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [taskId, setTaskId] = useState<string | null>(null);
-  const [taskStatus, setTaskStatus] = useState<TaskStatus | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [modelUrl, setModelUrl] = useState<string | null>(null);
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(character.avatar_url);
+  const [figureImage, setFigureImage] = useState<string | null>(character.avatar_url);
   const [customDescription, setCustomDescription] = useState("");
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Poll for task status
-  useEffect(() => {
-    if (!taskId || !isGenerating) return;
-
-    const pollStatus = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("generate-3d-figure", {
-          body: { action: "status", taskId }
-        });
-
-        if (error) throw error;
-
-        console.log("Poll result:", data);
-        setTaskStatus(data.status);
-        setProgress(Math.round((data.progress || 0) * 100));
-
-        if (data.status === "SUCCEEDED") {
-          setModelUrl(data.modelUrl);
-          setThumbnailUrl(data.thumbnailUrl);
-          setIsGenerating(false);
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
-          }
-          toast.success("3D-фигурка готова!");
-          
-          // Save thumbnail as avatar
-          if (data.thumbnailUrl) {
-            updateCharacter({ avatar_url: data.thumbnailUrl });
-          }
-        } else if (data.status === "FAILED" || data.status === "EXPIRED") {
-          setIsGenerating(false);
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
-          }
-          toast.error("Ошибка генерации 3D-модели");
-        }
-      } catch (error) {
-        console.error("Polling error:", error);
-      }
-    };
-
-    pollingRef.current = setInterval(pollStatus, 5000);
-    pollStatus(); // Initial poll
-
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-      }
-    };
-  }, [taskId, isGenerating, updateCharacter]);
 
   const generateFigure = async (mode: "auto" | "custom") => {
     if (mode === "custom" && !customDescription.trim()) {
@@ -94,14 +33,10 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
     }
 
     setIsGenerating(true);
-    setProgress(0);
-    setTaskStatus("PENDING");
-    setModelUrl(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("generate-3d-figure", {
+      const { data, error } = await supabase.functions.invoke("generate-figure", {
         body: {
-          action: "generate",
           race: character.race,
           subrace: character.subrace,
           characterClass: character.class,
@@ -117,23 +52,14 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
         throw new Error(data.error);
       }
 
-      setTaskId(data.taskId);
-      toast.info("Генерация 3D-модели начата. Это может занять 1-3 минуты.");
+      setFigureImage(data.imageUrl);
+      updateCharacter({ avatar_url: data.imageUrl });
+      toast.success("Фигурка сгенерирована!");
     } catch (error) {
-      console.error("Error starting generation:", error);
-      toast.error(error instanceof Error ? error.message : "Ошибка запуска генерации");
+      console.error("Error generating figure:", error);
+      toast.error(error instanceof Error ? error.message : "Ошибка генерации фигурки");
+    } finally {
       setIsGenerating(false);
-    }
-  };
-
-  const getStatusText = () => {
-    switch (taskStatus) {
-      case "PENDING": return "Ожидание в очереди...";
-      case "IN_PROGRESS": return "Генерация модели...";
-      case "SUCCEEDED": return "Готово!";
-      case "FAILED": return "Ошибка";
-      case "EXPIRED": return "Истекло время";
-      default: return "";
     }
   };
 
@@ -148,11 +74,11 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {thumbnailUrl ? (
+            {figureImage ? (
               <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-muted">
                 <img 
-                  src={thumbnailUrl} 
-                  alt="3D фигурка персонажа"
+                  src={figureImage} 
+                  alt="Фигурка персонажа"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute bottom-2 right-2">
@@ -178,7 +104,7 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Cuboid className="h-5 w-5" />
-            3D Генератор фигурки
+            Генератор 3D-фигурки
           </DialogTitle>
         </DialogHeader>
 
@@ -187,23 +113,13 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
           <div className="space-y-4">
             <div className="aspect-square rounded-lg overflow-hidden">
               <Figure3DViewer 
-                modelUrl={modelUrl} 
+                imageUrl={figureImage} 
                 isLoading={isGenerating}
               />
             </div>
 
-            {isGenerating && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{getStatusText()}</span>
-                  <span className="font-medium">{progress}%</span>
-                </div>
-                <Progress value={progress} className="h-2" />
-              </div>
-            )}
-
             <p className="text-xs text-center text-muted-foreground">
-              Вращайте модель мышкой • Колёсико для масштаба
+              Вращайте фигурку мышкой • Автоповорот включён
             </p>
           </div>
 
@@ -225,7 +141,7 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
                 <Card>
                   <CardContent className="pt-4 space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Автоматически создаст 3D-фигурку на основе параметров персонажа:
+                      Автоматически создаст фигурку на основе параметров персонажа:
                     </p>
                     
                     <div className="space-y-2 text-sm">
@@ -257,8 +173,20 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
                       ) : (
                         <Wand2 className="h-4 w-4 mr-2" />
                       )}
-                      Сгенерировать 3D-фигурку
+                      Сгенерировать фигурку
                     </Button>
+
+                    {figureImage && (
+                      <Button 
+                        variant="outline"
+                        className="w-full" 
+                        onClick={() => generateFigure("auto")}
+                        disabled={isGenerating}
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Перегенерировать
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -267,11 +195,11 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
                 <Card>
                   <CardContent className="pt-4 space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Опишите подробно внешний вид вашего персонажа для 3D-генерации:
+                      Опишите подробно внешний вид вашего персонажа:
                     </p>
                     
                     <Textarea
-                      placeholder="Например: Высокий эльф-воин в серебряных доспехах с золотыми узорами. Длинные белые волосы, острые уши. В руках держит светящийся меч. На плече сидит маленький дракон..."
+                      placeholder="Например: Высокий эльф-воин в серебряных доспехах с золотыми узорами. Длинные белые волосы, острые уши. В руках держит светящийся меч..."
                       value={customDescription}
                       onChange={(e) => setCustomDescription(e.target.value)}
                       rows={6}
@@ -309,14 +237,10 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
             <Card className="bg-muted/50">
               <CardContent className="pt-4 space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  <strong>О генерации:</strong>
+                  Фигурка генерируется в стиле коллекционных миниатюр из полимерной глины 
+                  с акварельной раскраской. Изображение отображается на изогнутой 3D-поверхности 
+                  с автоматическим вращением для обзора.
                 </p>
-                <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1">
-                  <li>Генерация занимает 1-3 минуты</li>
-                  <li>Результат — полноценная 3D-модель</li>
-                  <li>Модель можно вращать и рассматривать со всех сторон</li>
-                  <li>Используется Meshy AI для генерации</li>
-                </ul>
               </CardContent>
             </Card>
           </div>
