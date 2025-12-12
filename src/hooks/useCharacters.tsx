@@ -18,6 +18,7 @@ export interface Character {
   wisdom: number;
   charisma: number;
   backstory?: string;
+  avatar_url?: string | null;
   created_at: string;
 }
 

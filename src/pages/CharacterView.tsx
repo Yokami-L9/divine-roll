@@ -242,8 +242,17 @@ const CharacterView = () => {
         {/* Character Header */}
         <Card className="p-6 mb-6">
           <div className="flex items-start gap-6">
-            <div className="w-24 h-24 bg-gradient-gold rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-12 h-12 text-primary-foreground" />
+            <div className="w-24 h-24 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden bg-gradient-gold">
+              {character.avatar_url ? (
+                <img 
+                  src={character.avatar_url} 
+                  alt={character.name}
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: 'center 15%' }}
+                />
+              ) : (
+                <User className="w-12 h-12 text-primary-foreground" />
+              )}
             </div>
             <div className="flex-1">
               <h1 className="text-3xl font-serif font-bold mb-2">{character.name}</h1>
