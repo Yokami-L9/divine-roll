@@ -22,10 +22,12 @@ const Characters = () => {
             <h1 className="text-4xl font-serif font-bold text-primary mb-2">Персонажи игроков</h1>
             <p className="text-muted-foreground">Управляйте персонажами, их биографиями и развитием</p>
           </div>
-          <Button className="bg-gradient-gold hover:opacity-90 gap-2">
-            <Plus className="w-4 h-4" />
-            Создать персонажа
-          </Button>
+          <Link to="/characters/create">
+            <Button className="bg-gradient-gold hover:opacity-90 gap-2">
+              <Plus className="w-4 h-4" />
+              Создать персонажа
+            </Button>
+          </Link>
         </div>
 
         <Tabs defaultValue="list" className="mb-8">

@@ -55,10 +55,14 @@ export interface Background {
   description: string | null;
   skill_proficiencies: string[] | null;
   tool_proficiencies: string[] | null;
-  languages_count: number;
+  languages_count: number | null;
   equipment: string[] | null;
   feature_name: string | null;
   feature_description: string | null;
+  personality_traits: string[] | null;
+  ideals: string[] | null;
+  bonds: string[] | null;
+  flaws: string[] | null;
 }
 
 export interface Spell {
