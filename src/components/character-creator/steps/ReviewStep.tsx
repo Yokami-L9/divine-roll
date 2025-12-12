@@ -17,10 +17,12 @@ import {
   Scroll,
   Languages,
   Backpack,
-  Info
+  Info,
+  Crop
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SpellDescriptionDialog } from "../SpellDescriptionDialog";
+import { AvatarCropper } from "../AvatarCropper";
 
 // Dynamically import all spell icons
 const spellIconsContext = import.meta.glob('@/assets/spells/*.png', { eager: true, import: 'default' });
@@ -58,14 +60,17 @@ const schoolIconKeys: Record<string, string> = {
 interface ReviewStepProps {
   character: CharacterData;
   getModifier: (score: number) => number;
+  updateCharacter?: (updates: Partial<CharacterData>) => void;
 }
 
 type AbilityKey = keyof typeof ABILITY_NAMES;
 
-export function ReviewStep({ character, getModifier }: ReviewStepProps) {
+export function ReviewStep({ character, getModifier, updateCharacter }: ReviewStepProps) {
   const { data: allSpells } = useSpells();
   const [selectedSpell, setSelectedSpell] = useState<Spell | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [croppedAvatar, setCroppedAvatar] = useState<string | null>(null);
   const abilities: AbilityKey[] = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
 
   // Get spell by ID
@@ -90,6 +95,16 @@ export function ReviewStep({ character, getModifier }: ReviewStepProps) {
     return isProficient ? abilityMod + character.proficiency_bonus : abilityMod;
   };
 
+  const handleAvatarSave = (croppedDataUrl: string) => {
+    setCroppedAvatar(croppedDataUrl);
+    if (updateCharacter) {
+      updateCharacter({ avatar_url: croppedDataUrl });
+    }
+  };
+
+  // Use cropped avatar if available, otherwise use the original
+  const displayAvatar = croppedAvatar || character.avatar_url;
+
   return (
     <div className="space-y-6">
       <div>
@@ -106,10 +121,31 @@ export function ReviewStep({ character, getModifier }: ReviewStepProps) {
           <Card className="bg-gradient-to-br from-primary/20 to-transparent">
             <CardContent className="py-6">
               <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-full bg-background flex items-center justify-center border-4 border-primary shadow-lg">
-                  <span className="text-3xl font-bold text-primary">
-                    {character.name?.charAt(0) || "?"}
-                  </span>
+                <div className="relative group">
+                  <div className="w-20 h-20 rounded-full bg-background flex items-center justify-center border-4 border-primary shadow-lg overflow-hidden">
+                    {displayAvatar ? (
+                      <img 
+                        src={displayAvatar} 
+                        alt={character.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-3xl font-bold text-primary">
+                        {character.name?.charAt(0) || "?"}
+                      </span>
+                    )}
+                  </div>
+                  {character.avatar_url && updateCharacter && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      onClick={() => setCropperOpen(true)}
+                      title="Настроить аватар"
+                    >
+                      <Crop className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
                 <div className="flex-1">
                   <h1 className="text-2xl font-bold">{character.name || "Без имени"}</h1>
@@ -125,8 +161,24 @@ export function ReviewStep({ character, getModifier }: ReviewStepProps) {
                   </div>
                 </div>
               </div>
+              
+              {character.avatar_url && updateCharacter && (
+                <p className="text-xs text-muted-foreground mt-3 text-center">
+                  Наведите на аватар, чтобы настроить обрезку
+                </p>
+              )}
             </CardContent>
           </Card>
+
+      {/* Avatar Cropper Dialog */}
+      {character.avatar_url && (
+        <AvatarCropper
+          imageUrl={character.avatar_url}
+          open={cropperOpen}
+          onClose={() => setCropperOpen(false)}
+          onSave={handleAvatarSave}
+        />
+      )}
 
           {/* Combat Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
