@@ -44,6 +44,7 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
           subrace: character.subrace,
           characterClass: character.class,
           equipment: character.equipment,
+          gender: character.gender,
           customDescription: mode === "custom" ? customDescription : undefined,
           mode
         }

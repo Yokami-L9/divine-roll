@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { race, subrace, characterClass, equipment, customDescription, mode, anglePrompt } = await req.json();
+    const { race, subrace, characterClass, equipment, gender, customDescription, mode, anglePrompt } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -19,20 +19,21 @@ serve(async (req) => {
     }
 
     const viewAngle = anglePrompt || "front view, facing camera";
-    console.log(`Generating figure for: ${race} ${characterClass}, mode: ${mode}, angle: ${viewAngle}`);
+    const genderTerm = gender === "female" ? "female" : "male";
+    console.log(`Generating figure for: ${genderTerm} ${race} ${characterClass}, mode: ${mode}, angle: ${viewAngle}`);
 
     let characterDescription = "";
 
     if (mode === "auto") {
-      // Automatic generation based on race, class, and equipment
+      // Automatic generation based on race, class, gender, and equipment
       const equipmentList = equipment && equipment.length > 0 
         ? equipment.filter((e: string) => e !== "__NO_EQUIPMENT__").join(", ")
         : "adventurer's gear";
       
-      characterDescription = `A ${race}${subrace ? ` (${subrace})` : ""} ${characterClass} character wearing ${equipmentList}. ${viewAngle}. Fantasy warrior in heroic pose.`;
+      characterDescription = `A ${genderTerm} ${race}${subrace ? ` (${subrace})` : ""} ${characterClass} character wearing ${equipmentList}. ${viewAngle}. Fantasy warrior in heroic pose.`;
     } else {
       // Custom description from user with angle
-      characterDescription = `${customDescription || `A ${race} ${characterClass} fantasy character`}. ${viewAngle}.`;
+      characterDescription = `${customDescription || `A ${genderTerm} ${race} ${characterClass} fantasy character`}. ${viewAngle}.`;
     }
 
     const prompt = `A photograph of a hand-painted collectible designer toy based on ${characterDescription}. Made of matte polymer clay. The paint job mimics a sketchy watercolor and ink illustration style, with visible brushstrokes, pencil lines, and textured washes. Grotesque and whimsical art style. Studio miniature photography, soft lighting, neutral background. Macro lens. The figurine stands on a round black display base. Full body view showing the complete miniature figure. --ar 4:5`;
