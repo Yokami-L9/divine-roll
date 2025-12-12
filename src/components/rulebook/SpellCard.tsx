@@ -3,27 +3,26 @@ import { Badge } from "@/components/ui/badge";
 import { Spell } from "@/hooks/useRulebook";
 import { BookOpen } from "lucide-react";
 
-// Import spell school icons
-import evocationIcon from "@/assets/spells/evocation.png";
-import conjurationIcon from "@/assets/spells/conjuration.png";
-import illusionIcon from "@/assets/spells/illusion.png";
-import necromancyIcon from "@/assets/spells/necromancy.png";
-import abjurationIcon from "@/assets/spells/abjuration.png";
-import enchantmentIcon from "@/assets/spells/enchantment.png";
-import transmutationIcon from "@/assets/spells/transmutation.png";
-import divinationIcon from "@/assets/spells/divination.png";
+// Spell icons mapping by English name
+const spellIconsContext = import.meta.glob('@/assets/spells/*.png', { eager: true, import: 'default' });
 
-const schoolIcons: Record<string, string> = {
-  Воплощение: evocationIcon,
-  Вызов: conjurationIcon,
-  Иллюзия: illusionIcon,
-  Некромантия: necromancyIcon,
-  Ограждение: abjurationIcon,
-  Очарование: enchantmentIcon,
-  Преобразование: transmutationIcon,
-  Прорицание: divinationIcon,
-  Проявление: evocationIcon,
-};
+// Convert file paths to usable icon map
+const spellIcons: Record<string, string> = {};
+Object.entries(spellIconsContext).forEach(([path, module]) => {
+  const fileName = path.split('/').pop()?.replace('.png', '') || '';
+  spellIcons[fileName] = module as string;
+});
+
+// Helper function to convert spell name to file name format
+function getSpellIconKey(nameEn: string | null): string {
+  if (!nameEn) return '';
+  return nameEn
+    .toLowerCase()
+    .replace(/'/g, '')
+    .replace(/\//g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
 
 const schoolColors: Record<string, string> = {
   Воплощение: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -49,6 +48,19 @@ const schoolGradients: Record<string, string> = {
   Проявление: "from-red-500/10 via-transparent to-transparent",
 };
 
+// Fallback school icons
+const schoolIconKeys: Record<string, string> = {
+  Воплощение: "evocation",
+  Вызов: "conjuration",
+  Иллюзия: "illusion",
+  Некромантия: "necromancy",
+  Ограждение: "abjuration",
+  Очарование: "enchantment",
+  Преобразование: "transmutation",
+  Прорицание: "divination",
+  Проявление: "evocation",
+};
+
 interface SpellCardProps {
   spell: Spell;
   onClick?: () => void;
@@ -56,8 +68,12 @@ interface SpellCardProps {
 
 export function SpellCard({ spell, onClick }: SpellCardProps) {
   const levelText = spell.level === 0 ? "Заговор" : `${spell.level} ур.`;
-  const schoolIcon = schoolIcons[spell.school];
   const gradient = schoolGradients[spell.school] || "";
+  
+  // Try to get unique spell icon, fallback to school icon
+  const spellIconKey = getSpellIconKey(spell.name_en);
+  const schoolIconKey = schoolIconKeys[spell.school] || "evocation";
+  const spellIcon = spellIcons[spellIconKey] || spellIcons[schoolIconKey];
 
   return (
     <Card 
@@ -68,10 +84,10 @@ export function SpellCard({ spell, onClick }: SpellCardProps) {
         <div className="flex gap-3">
           {/* Icon */}
           <div className="w-12 h-12 rounded-lg overflow-hidden shadow-md border border-border/50 flex-shrink-0 group-hover:scale-105 transition-transform">
-            {schoolIcon ? (
+            {spellIcon ? (
               <img 
-                src={schoolIcon} 
-                alt={spell.school}
+                src={spellIcon} 
+                alt={spell.name}
                 className="w-full h-full object-cover"
               />
             ) : (
