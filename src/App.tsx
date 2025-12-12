@@ -19,6 +19,7 @@ import Encyclopedia from "./pages/Encyclopedia";
 import Rulebook from "./pages/Rulebook";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
+import CharacterCreate from "./pages/CharacterCreate";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/world" element={<World />} />
             <Route path="/characters" element={<Characters />} />
+            <Route path="/characters/create" element={<CharacterCreate />} />
             <Route path="/community" element={<Community />} />
             <Route path="/npc" element={<NPC />} />
             <Route path="/monsters" element={<Monsters />} />
