@@ -1,14 +1,47 @@
 import { useSpells, useClasses, Spell } from "@/hooks/useRulebook";
 import { CharacterData } from "@/hooks/useCharacterCreator";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Loader2, Wand2, Search, Info } from "lucide-react";
+import { Loader2, Wand2, Search, Info, Sparkles } from "lucide-react";
 import { useState, useMemo } from "react";
 import { SpellDescriptionDialog } from "../SpellDescriptionDialog";
+
+// Dynamically import all spell icons
+const spellIconsContext = import.meta.glob('@/assets/spells/*.png', { eager: true, import: 'default' });
+
+const spellIcons: Record<string, string> = {};
+Object.entries(spellIconsContext).forEach(([path, module]) => {
+  const fileName = path.split('/').pop()?.replace('.png', '') || '';
+  spellIcons[fileName] = module as string;
+});
+
+// Helper function to convert spell name to file name format
+function getSpellIconKey(nameEn: string | null): string {
+  if (!nameEn) return '';
+  return nameEn
+    .toLowerCase()
+    .replace(/'/g, '')
+    .replace(/\//g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+// Fallback school icons
+const schoolIconKeys: Record<string, string> = {
+  Воплощение: "evocation",
+  Вызов: "conjuration",
+  Иллюзия: "illusion",
+  Некромантия: "necromancy",
+  Ограждение: "abjuration",
+  Очарование: "enchantment",
+  Преобразование: "transmutation",
+  Прорицание: "divination",
+  Проявление: "evocation",
+};
 
 interface SpellsStepProps {
   character: CharacterData;
@@ -190,6 +223,9 @@ export function SpellsStep({ character, updateCharacter }: SpellsStepProps) {
                 {cantrips.map((spell) => {
                   const isSelected = character.known_spells.includes(spell.id);
                   const colorClass = schoolColors[spell.school] || "";
+                  const spellIconKey = getSpellIconKey(spell.name_en);
+                  const schoolIconKey = schoolIconKeys[spell.school] || "evocation";
+                  const spellIcon = spellIcons[spellIconKey] || spellIcons[schoolIconKey];
                   
                   return (
                     <Card
@@ -200,6 +236,20 @@ export function SpellsStep({ character, updateCharacter }: SpellsStepProps) {
                       <CardHeader className="py-2 px-3">
                         <div className="flex items-center gap-3">
                           <Checkbox checked={isSelected} />
+                          {/* Spell Icon */}
+                          <div className="w-10 h-10 rounded-md overflow-hidden border border-border/50 flex-shrink-0">
+                            {spellIcon ? (
+                              <img 
+                                src={spellIcon} 
+                                alt={spell.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-muted flex items-center justify-center">
+                                <Sparkles className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
                           <div className="flex-1 min-w-0">
                             <CardTitle className="text-sm">{spell.name}</CardTitle>
                             <div className="flex gap-1 mt-1">
@@ -240,6 +290,9 @@ export function SpellsStep({ character, updateCharacter }: SpellsStepProps) {
                 {level1Spells.map((spell) => {
                   const isSelected = character.known_spells.includes(spell.id);
                   const colorClass = schoolColors[spell.school] || "";
+                  const spellIconKey = getSpellIconKey(spell.name_en);
+                  const schoolIconKey = schoolIconKeys[spell.school] || "evocation";
+                  const spellIcon = spellIcons[spellIconKey] || spellIcons[schoolIconKey];
                   
                   return (
                     <Card
@@ -250,6 +303,20 @@ export function SpellsStep({ character, updateCharacter }: SpellsStepProps) {
                       <CardHeader className="py-2 px-3">
                         <div className="flex items-center gap-3">
                           <Checkbox checked={isSelected} />
+                          {/* Spell Icon */}
+                          <div className="w-10 h-10 rounded-md overflow-hidden border border-border/50 flex-shrink-0">
+                            {spellIcon ? (
+                              <img 
+                                src={spellIcon} 
+                                alt={spell.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-muted flex items-center justify-center">
+                                <Sparkles className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
                           <div className="flex-1 min-w-0">
                             <CardTitle className="text-sm">{spell.name}</CardTitle>
                             <div className="flex gap-1 mt-1 flex-wrap">
