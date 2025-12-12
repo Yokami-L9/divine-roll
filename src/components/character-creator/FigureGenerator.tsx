@@ -171,6 +171,10 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
                         <span className="font-medium">{character.class || "Не выбран"}</span>
                       </div>
                       <div className="flex justify-between">
+                        <span className="text-muted-foreground">Пол:</span>
+                        <span className="font-medium">{character.gender === "female" ? "Женский" : "Мужской"}</span>
+                      </div>
+                      <div className="flex justify-between">
                         <span className="text-muted-foreground">Снаряжение:</span>
                         <span className="font-medium text-right max-w-48 truncate">
                           {character.equipment.filter(e => e !== "__NO_EQUIPMENT__").length > 0 
