@@ -12,7 +12,8 @@ import {
   User, 
   BookOpen,
   Scroll,
-  Languages
+  Languages,
+  Backpack
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -242,6 +243,29 @@ export function ReviewStep({ character, getModifier }: ReviewStepProps) {
                       {spellId}
                     </Badge>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Equipment */}
+          {character.equipment.filter(e => e !== "__NO_EQUIPMENT__").length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Backpack className="h-4 w-4" />
+                  Снаряжение
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-1 flex-wrap">
+                  {character.equipment
+                    .filter(e => e !== "__NO_EQUIPMENT__")
+                    .map((item, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">
+                        {item}
+                      </Badge>
+                    ))}
                 </div>
               </CardContent>
             </Card>

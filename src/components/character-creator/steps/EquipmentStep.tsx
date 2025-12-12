@@ -303,11 +303,19 @@ const DEFAULT_EQUIPMENT: Record<string, string[]> = {
 };
 
 export function EquipmentStep({ character, updateCharacter }: EquipmentStepProps) {
-  const [skipEquipment, setSkipEquipment] = useState(false);
+  const [skipEquipment, setSkipEquipment] = useState(
+    character.equipment.includes("__NO_EQUIPMENT__")
+  );
   const [selectedChoices, setSelectedChoices] = useState<Record<number, string>>({});
 
   const classEquipment = CLASS_EQUIPMENT[character.class];
   const defaultItems = DEFAULT_EQUIPMENT[character.class] || [];
+
+  // Check if all choices are made
+  const allChoicesMade = useMemo(() => {
+    if (!classEquipment || skipEquipment) return true;
+    return classEquipment.choices.every((_, index) => !!selectedChoices[index]);
+  }, [classEquipment, selectedChoices, skipEquipment]);
 
   const selectedEquipment = useMemo(() => {
     if (skipEquipment) return [];
@@ -359,14 +367,12 @@ export function EquipmentStep({ character, updateCharacter }: EquipmentStepProps
     setSkipEquipment(skip);
     
     if (skip) {
-      // Keep only background equipment
-      const bgEquipment = character.equipment.filter(e => 
-        !defaultItems.includes(e)
-      );
-      updateCharacter({ equipment: bgEquipment });
+      // Mark as explicitly skipped with special marker
+      updateCharacter({ equipment: ["__NO_EQUIPMENT__"] });
     } else {
       // Restore with current selections
-      handleChoiceChange(-1, "");
+      setSelectedChoices({});
+      updateCharacter({ equipment: [...defaultItems] });
     }
   };
 
@@ -425,9 +431,16 @@ export function EquipmentStep({ character, updateCharacter }: EquipmentStepProps
             </h3>
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-4">
-                {classEquipment.choices.map((choice, index) => (
-                  <Card key={index} className="p-4">
-                    <h4 className="text-sm font-medium mb-3">Выбор {index + 1}</h4>
+                {classEquipment.choices.map((choice, index) => {
+                  const isSelected = !!selectedChoices[index];
+                  return (
+                  <Card key={index} className={cn("p-4", !isSelected && "border-destructive/50")}>
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      Выбор {index + 1}
+                      {!isSelected && (
+                        <Badge variant="destructive" className="text-xs">Обязательно</Badge>
+                      )}
+                    </h4>
                     <RadioGroup
                       value={selectedChoices[index] || ""}
                       onValueChange={(value) => handleChoiceChange(index, value)}
@@ -463,7 +476,8 @@ export function EquipmentStep({ character, updateCharacter }: EquipmentStepProps
                       ))}
                     </RadioGroup>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           </div>
