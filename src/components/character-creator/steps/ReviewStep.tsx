@@ -162,17 +162,19 @@ export function ReviewStep({ character, getModifier }: ReviewStepProps) {
             </Card>
           </div>
 
-          {/* Abilities with Skills */}
+          {/* Abilities with Skills - D&D 5e PHB Rules */}
+          {/* Skill Modifier = Ability Modifier + Proficiency Bonus (if proficient) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {abilities.map((ability) => {
               const value = character[ability];
-              const mod = getModifier(value);
+              const abilityMod = getModifier(value);
               const isSaveProficient = character.saving_throw_proficiencies?.includes(
                 ABILITY_NAMES[ability]
               );
-              const saveMod = isSaveProficient ? mod + character.proficiency_bonus : mod;
+              // Saving throw = ability mod + proficiency (if proficient) per PHB
+              const saveMod = isSaveProficient ? abilityMod + character.proficiency_bonus : abilityMod;
               
-              // Get skills for this ability
+              // Get skills linked to this ability per PHB
               const abilitySkills = SKILLS.filter(s => s.ability === ability);
               
               return (
@@ -182,63 +184,97 @@ export function ReviewStep({ character, getModifier }: ReviewStepProps) {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="text-base">{ABILITY_NAMES[ability]}</CardTitle>
+                        <p className="text-xs text-muted-foreground">Модификатор</p>
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold">{value}</div>
                         <div className={cn(
-                          "text-sm font-medium",
-                          mod > 0 && "text-green-500",
-                          mod < 0 && "text-red-500"
+                          "text-lg font-bold",
+                          abilityMod > 0 && "text-green-500",
+                          abilityMod < 0 && "text-red-500",
+                          abilityMod === 0 && "text-muted-foreground"
                         )}>
-                          {formatModifier(mod)}
+                          {formatModifier(abilityMod)}
                         </div>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-3 space-y-2">
+                  <CardContent className="pt-3 space-y-1.5">
                     {/* Saving Throw */}
                     <div className={cn(
-                      "flex items-center justify-between py-1.5 px-2 rounded text-sm",
-                      isSaveProficient ? "bg-primary/10 border border-primary/30" : "bg-muted/50"
+                      "flex items-center justify-between py-1.5 px-2 rounded text-sm border",
+                      isSaveProficient ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-transparent"
                     )}>
                       <span className={cn(
-                        "flex items-center gap-1",
+                        "flex items-center gap-1.5",
                         isSaveProficient && "font-medium"
                       )}>
+                        {isSaveProficient && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
                         <Shield className="h-3 w-3" />
                         Спасбросок
                       </span>
-                      <Badge variant={isSaveProficient ? "default" : "outline"} className="text-xs">
+                      <span className={cn(
+                        "font-mono text-sm font-bold",
+                        saveMod > 0 && "text-green-500",
+                        saveMod < 0 && "text-red-500"
+                      )}>
                         {formatModifier(saveMod)}
-                      </Badge>
+                      </span>
                     </div>
                     
-                    {/* Skills */}
-                    {abilitySkills.map((skill) => {
-                      const isProficient = character.skill_proficiencies.includes(skill.name);
-                      const skillMod = isProficient ? mod + character.proficiency_bonus : mod;
-                      
-                      return (
-                        <div 
-                          key={skill.name}
-                          className={cn(
-                            "flex items-center justify-between py-1.5 px-2 rounded text-sm",
-                            isProficient ? "bg-primary/10" : "bg-muted/30"
-                          )}
-                        >
-                          <span className={isProficient ? "font-medium" : "text-muted-foreground"}>
-                            {skill.name}
-                          </span>
-                          <Badge variant={isProficient ? "default" : "outline"} className="text-xs">
-                            {formatModifier(skillMod)}
-                          </Badge>
-                        </div>
-                      );
-                    })}
+                    {/* Skills for this ability */}
+                    {abilitySkills.length > 0 && (
+                      <div className="pt-1 border-t border-border/50">
+                        <p className="text-xs text-muted-foreground mb-1.5 px-2">Навыки:</p>
+                        {abilitySkills.map((skill) => {
+                          const isProficient = character.skill_proficiencies.includes(skill.name);
+                          // Skill modifier = ability mod + proficiency (if proficient) per PHB
+                          const skillMod = isProficient 
+                            ? abilityMod + character.proficiency_bonus 
+                            : abilityMod;
+                          
+                          return (
+                            <div 
+                              key={skill.name}
+                              className={cn(
+                                "flex items-center justify-between py-1.5 px-2 rounded text-sm",
+                                isProficient ? "bg-primary/10" : ""
+                              )}
+                            >
+                              <span className={cn(
+                                "flex items-center gap-1.5",
+                                isProficient ? "font-medium" : "text-muted-foreground"
+                              )}>
+                                {isProficient && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                                {skill.name}
+                              </span>
+                              <span className={cn(
+                                "font-mono text-sm font-bold",
+                                skillMod > 0 && "text-green-500",
+                                skillMod < 0 && "text-red-500",
+                                skillMod === 0 && "text-muted-foreground"
+                              )}>
+                                {formatModifier(skillMod)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
             })}
+          </div>
+
+          {/* Proficiency Bonus Info */}
+          <div className="text-center text-sm text-muted-foreground">
+            <Badge variant="outline" className="font-mono">
+              Бонус мастерства: {formatModifier(character.proficiency_bonus)}
+            </Badge>
+            <p className="mt-1 text-xs">
+              • Маркер показывает владение навыком или спасброском
+            </p>
           </div>
 
           {/* Languages & Traits */}
