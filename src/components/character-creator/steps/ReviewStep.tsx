@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { CharacterData, ABILITY_NAMES, SKILLS } from "@/hooks/useCharacterCreator";
-import { useSpells } from "@/hooks/useRulebook";
+import { useSpells, Spell } from "@/hooks/useRulebook";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -14,9 +16,44 @@ import {
   BookOpen,
   Scroll,
   Languages,
-  Backpack
+  Backpack,
+  Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SpellDescriptionDialog } from "../SpellDescriptionDialog";
+
+// Dynamically import all spell icons
+const spellIconsContext = import.meta.glob('@/assets/spells/*.png', { eager: true, import: 'default' });
+
+const spellIcons: Record<string, string> = {};
+Object.entries(spellIconsContext).forEach(([path, module]) => {
+  const fileName = path.split('/').pop()?.replace('.png', '') || '';
+  spellIcons[fileName] = module as string;
+});
+
+// Helper function to convert spell name to file name format
+function getSpellIconKey(nameEn: string | null): string {
+  if (!nameEn) return '';
+  return nameEn
+    .toLowerCase()
+    .replace(/'/g, '')
+    .replace(/\//g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+// Fallback school icons
+const schoolIconKeys: Record<string, string> = {
+  Воплощение: "evocation",
+  Вызов: "conjuration",
+  Иллюзия: "illusion",
+  Некромантия: "necromancy",
+  Ограждение: "abjuration",
+  Очарование: "enchantment",
+  Преобразование: "transmutation",
+  Прорицание: "divination",
+  Проявление: "evocation",
+};
 
 interface ReviewStepProps {
   character: CharacterData;
@@ -27,12 +64,18 @@ type AbilityKey = keyof typeof ABILITY_NAMES;
 
 export function ReviewStep({ character, getModifier }: ReviewStepProps) {
   const { data: allSpells } = useSpells();
+  const [selectedSpell, setSelectedSpell] = useState<Spell | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const abilities: AbilityKey[] = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
 
-  // Get spell names from IDs
-  const getSpellName = (spellId: string) => {
-    const spell = allSpells?.find(s => s.id === spellId);
-    return spell?.name || spellId;
+  // Get spell by ID
+  const getSpell = (spellId: string) => {
+    return allSpells?.find(s => s.id === spellId);
+  };
+
+  const openSpellDetails = (spell: Spell) => {
+    setSelectedSpell(spell);
+    setDialogOpen(true);
   };
 
   const formatModifier = (mod: number) => {
@@ -241,20 +284,62 @@ export function ReviewStep({ character, getModifier }: ReviewStepProps) {
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Sparkles className="h-4 w-4" />
-                  Заклинания
+                  Заклинания ({character.known_spells.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-1 flex-wrap">
-                  {character.known_spells.map((spellId) => (
-                    <Badge key={spellId} variant="secondary" className="text-xs">
-                      {getSpellName(spellId)}
-                    </Badge>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {character.known_spells.map((spellId) => {
+                    const spell = getSpell(spellId);
+                    if (!spell) return null;
+                    
+                    const spellIconKey = getSpellIconKey(spell.name_en);
+                    const schoolIconKey = schoolIconKeys[spell.school] || "evocation";
+                    const spellIcon = spellIcons[spellIconKey] || spellIcons[schoolIconKey];
+                    
+                    return (
+                      <div 
+                        key={spellId}
+                        className="flex items-center gap-2 p-2 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
+                        onClick={() => openSpellDetails(spell)}
+                      >
+                        {/* Spell Icon */}
+                        <div className="w-8 h-8 rounded overflow-hidden border border-border/50 flex-shrink-0">
+                          {spellIcon ? (
+                            <img 
+                              src={spellIcon} 
+                              alt={spell.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-muted flex items-center justify-center">
+                              <Sparkles className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{spell.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {spell.level === 0 ? "Заговор" : `${spell.level} уровень`} • {spell.school}
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
+                          <Info className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
           )}
+
+          {/* Spell Description Dialog */}
+          <SpellDescriptionDialog
+            spell={selectedSpell}
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+          />
 
           {/* Equipment */}
           {character.equipment.filter(e => e !== "__NO_EQUIPMENT__").length > 0 && (
