@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Scroll, Skull, ChevronRight, Users, Swords, Sparkles, Shield, AlertTriangle, BookText, Loader2 } from "lucide-react";
+import { BookOpen, Scroll, Skull, ChevronRight, Users, Swords, Sparkles, Shield, AlertTriangle, BookText, Loader2, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Link } from "react-router-dom";
 import { useRaces, useClasses, useBackgrounds, useSpells, useEquipment, useConditions, useRules, Race, CharacterClass, Spell, Condition, Rule } from "@/hooks/useRulebook";
 import { RaceCard } from "@/components/rulebook/RaceCard";
 import { RaceDetailModal } from "@/components/rulebook/RaceDetailModal";
@@ -499,6 +500,14 @@ export default function Rulebook() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <div className="mb-6">
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/">
+            <Home className="h-4 w-4 mr-2" />
+            На главную
+          </Link>
+        </Button>
+      </div>
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4">База Знаний</h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
