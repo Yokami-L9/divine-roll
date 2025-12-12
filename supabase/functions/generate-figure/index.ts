@@ -11,14 +11,15 @@ serve(async (req) => {
   }
 
   try {
-    const { race, subrace, characterClass, equipment, customDescription, mode } = await req.json();
+    const { race, subrace, characterClass, equipment, customDescription, mode, anglePrompt } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log(`Generating figure for: ${race} ${characterClass}, mode: ${mode}`);
+    const viewAngle = anglePrompt || "front view, facing camera";
+    console.log(`Generating figure for: ${race} ${characterClass}, mode: ${mode}, angle: ${viewAngle}`);
 
     let characterDescription = "";
 
@@ -28,10 +29,10 @@ serve(async (req) => {
         ? equipment.filter((e: string) => e !== "__NO_EQUIPMENT__").join(", ")
         : "adventurer's gear";
       
-      characterDescription = `A ${race}${subrace ? ` (${subrace})` : ""} ${characterClass} character wearing ${equipmentList}. Fantasy warrior in heroic pose.`;
+      characterDescription = `A ${race}${subrace ? ` (${subrace})` : ""} ${characterClass} character wearing ${equipmentList}. ${viewAngle}. Fantasy warrior in heroic pose.`;
     } else {
-      // Custom description from user
-      characterDescription = customDescription || `A ${race} ${characterClass} fantasy character`;
+      // Custom description from user with angle
+      characterDescription = `${customDescription || `A ${race} ${characterClass} fantasy character`}. ${viewAngle}.`;
     }
 
     const prompt = `A photograph of a hand-painted collectible designer toy based on ${characterDescription}. Made of matte polymer clay. The paint job mimics a sketchy watercolor and ink illustration style, with visible brushstrokes, pencil lines, and textured washes. Grotesque and whimsical art style. Studio miniature photography, soft lighting, neutral background. Macro lens. The figurine stands on a round black display base. Full body view showing the complete miniature figure. --ar 4:5`;
