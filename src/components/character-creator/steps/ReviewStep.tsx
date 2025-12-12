@@ -1,4 +1,5 @@
 import { CharacterData, ABILITY_NAMES, SKILLS } from "@/hooks/useCharacterCreator";
+import { useSpells } from "@/hooks/useRulebook";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -25,7 +26,14 @@ interface ReviewStepProps {
 type AbilityKey = keyof typeof ABILITY_NAMES;
 
 export function ReviewStep({ character, getModifier }: ReviewStepProps) {
+  const { data: allSpells } = useSpells();
   const abilities: AbilityKey[] = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
+
+  // Get spell names from IDs
+  const getSpellName = (spellId: string) => {
+    const spell = allSpells?.find(s => s.id === spellId);
+    return spell?.name || spellId;
+  };
 
   const formatModifier = (mod: number) => {
     return mod >= 0 ? `+${mod}` : `${mod}`;
@@ -240,7 +248,7 @@ export function ReviewStep({ character, getModifier }: ReviewStepProps) {
                 <div className="flex gap-1 flex-wrap">
                   {character.known_spells.map((spellId) => (
                     <Badge key={spellId} variant="secondary" className="text-xs">
-                      {spellId}
+                      {getSpellName(spellId)}
                     </Badge>
                   ))}
                 </div>
