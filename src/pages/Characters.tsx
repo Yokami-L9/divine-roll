@@ -76,8 +76,17 @@ const Characters = () => {
                   <Link key={char.id} to={`/characters/${char.id}`}>
                     <Card className="p-6 bg-card border-border hover:border-primary/50 transition-all group cursor-pointer">
                       <div className="flex items-start gap-4 mb-4">
-                        <div className="w-14 h-14 bg-gradient-gold rounded-full flex items-center justify-center">
-                          <UserCircle className="w-8 h-8 text-primary-foreground" />
+                        <div className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden bg-gradient-gold">
+                          {char.avatar_url ? (
+                            <img 
+                              src={char.avatar_url} 
+                              alt={char.name}
+                              className="w-full h-full object-cover"
+                              style={{ objectPosition: 'center 15%' }}
+                            />
+                          ) : (
+                            <UserCircle className="w-8 h-8 text-primary-foreground" />
+                          )}
                         </div>
                         <div className="flex-1">
                           <h3 className="text-lg font-serif font-semibold group-hover:text-primary">{char.name}</h3>

@@ -157,10 +157,19 @@ export function DetailsStep({ character, updateCharacter }: DetailsStepProps) {
         <Card className="bg-primary/10">
           <CardContent className="py-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center border-2 border-primary">
-                <span className="text-2xl font-bold text-primary">
-                  {character.name.charAt(0)}
-                </span>
+              <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center border-2 border-primary overflow-hidden">
+                {character.avatar_url ? (
+                  <img 
+                    src={character.avatar_url} 
+                    alt={character.name}
+                    className="w-full h-full object-cover object-top"
+                    style={{ objectPosition: 'center 15%' }}
+                  />
+                ) : (
+                  <span className="text-2xl font-bold text-primary">
+                    {character.name.charAt(0)}
+                  </span>
+                )}
               </div>
               <div>
                 <h3 className="text-xl font-bold">{character.name}</h3>
