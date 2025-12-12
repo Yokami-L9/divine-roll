@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BookOpen, Scroll, Skull, ChevronRight, Users, Swords, Sparkles, Shield, AlertTriangle, BookText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRaces, useClasses, useBackgrounds, useSpells, useEquipment, useConditions, useRules, Race, CharacterClass, Spell } from "@/hooks/useRulebook";
+import { useRaces, useClasses, useBackgrounds, useSpells, useEquipment, useConditions, useRules, Race, CharacterClass, Spell, Condition } from "@/hooks/useRulebook";
 import { RaceCard } from "@/components/rulebook/RaceCard";
 import { RaceDetailModal } from "@/components/rulebook/RaceDetailModal";
 import { ClassCard } from "@/components/rulebook/ClassCard";
@@ -13,6 +13,7 @@ import { SpellCard } from "@/components/rulebook/SpellCard";
 import { SpellDetailModal } from "@/components/rulebook/SpellDetailModal";
 import { EquipmentTable } from "@/components/rulebook/EquipmentTable";
 import { ConditionCard } from "@/components/rulebook/ConditionCard";
+import { ConditionDetailModal } from "@/components/rulebook/ConditionDetailModal";
 import { RuleSection } from "@/components/rulebook/RuleSection";
 import { Badge } from "@/components/ui/badge";
 interface BookPart {
@@ -264,6 +265,9 @@ function EquipmentSection() {
 
 function ConditionsSection() {
   const { data: conditions, isLoading } = useConditions();
+  const [search, setSearch] = useState("");
+  const [selectedCondition, setSelectedCondition] = useState<Condition | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -273,11 +277,39 @@ function ConditionsSection() {
     );
   }
 
+  const filteredConditions = conditions?.filter(
+    (condition) =>
+      condition.name.toLowerCase().includes(search.toLowerCase()) ||
+      condition.name_en?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleConditionClick = (condition: Condition) => {
+    setSelectedCondition(condition);
+    setModalOpen(true);
+  };
+
   return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {conditions?.map((condition) => (
-        <ConditionCard key={condition.id} condition={condition} />
-      ))}
+    <div className="space-y-6">
+      <Input
+        placeholder="Поиск состояния..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="max-w-md"
+      />
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredConditions?.map((condition) => (
+          <ConditionCard 
+            key={condition.id} 
+            condition={condition} 
+            onClick={() => handleConditionClick(condition)}
+          />
+        ))}
+      </div>
+      <ConditionDetailModal 
+        condition={selectedCondition} 
+        open={modalOpen} 
+        onOpenChange={setModalOpen} 
+      />
     </div>
   );
 }
