@@ -73,30 +73,36 @@ const Characters = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {characters.map((char) => (
-                  <Card key={char.id} className="p-6 bg-card border-border hover:border-primary/50 transition-all group">
-                    <div className="flex items-start gap-4 mb-4">
-                      <div className="w-14 h-14 bg-gradient-gold rounded-full flex items-center justify-center">
-                        <UserCircle className="w-8 h-8 text-primary-foreground" />
+                  <Link key={char.id} to={`/characters/${char.id}`}>
+                    <Card className="p-6 bg-card border-border hover:border-primary/50 transition-all group cursor-pointer">
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className="w-14 h-14 bg-gradient-gold rounded-full flex items-center justify-center">
+                          <UserCircle className="w-8 h-8 text-primary-foreground" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-serif font-semibold group-hover:text-primary">{char.name}</h3>
+                          <p className="text-sm text-muted-foreground">{char.race} • {char.class}</p>
+                          <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded">Ур. {char.level}</span>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            deleteCharacter(char.id);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-serif font-semibold group-hover:text-primary">{char.name}</h3>
-                        <p className="text-sm text-muted-foreground">{char.race} • {char.class}</p>
-                        <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded">Ур. {char.level}</span>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-gold" style={{ width: `${(char.hp / char.max_hp) * 100}%` }}></div>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                        onClick={() => deleteCharacter(char.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-gold" style={{ width: `${(char.hp / char.max_hp) * 100}%` }}></div>
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">HP: {char.hp}/{char.max_hp}</div>
-                  </Card>
+                      <div className="text-sm text-muted-foreground mt-1">HP: {char.hp}/{char.max_hp}</div>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             )}
