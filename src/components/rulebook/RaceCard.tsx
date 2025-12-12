@@ -59,13 +59,13 @@ export function RaceCard({ race, onClick }: RaceCardProps) {
       onClick={onClick}
     >
       {raceImage && (
-        <div className="h-48 overflow-hidden relative">
+        <div className="h-56 overflow-hidden relative">
           <img 
             src={raceImage} 
             alt={race.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/10 to-transparent" />
         </div>
       )}
 

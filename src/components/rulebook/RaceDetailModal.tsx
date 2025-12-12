@@ -114,8 +114,8 @@ export function RaceDetailModal({ race, open, onOpenChange }: RaceDetailModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
-        <div className="flex flex-col md:flex-row h-full">
+      <DialogContent className="max-w-4xl h-[90vh] p-0 overflow-hidden">
+        <div className="flex flex-col md:flex-row h-full overflow-hidden">
           {/* Image Section */}
           <div className="relative w-full md:w-2/5 h-64 md:h-auto bg-gradient-to-b from-background to-muted">
             {displayedImage && (
@@ -150,10 +150,11 @@ export function RaceDetailModal({ race, open, onOpenChange }: RaceDetailModalPro
               )}
             </DialogHeader>
 
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 overflow-auto">
+              <div className="p-4">
               {!selectedSubrace ? (
                 // Main race view
-                <div className="space-y-4">
+                <div className="space-y-4 pb-4">
                   <p className="text-muted-foreground">{race.description}</p>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -262,6 +263,7 @@ export function RaceDetailModal({ race, open, onOpenChange }: RaceDetailModalPro
                   )}
                 </div>
               )}
+              </div>
             </ScrollArea>
           </div>
         </div>
