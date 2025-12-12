@@ -4,17 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BookOpen, Scroll, Skull, ChevronRight, Users, Swords, Sparkles, Shield, AlertTriangle, BookText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRaces, useClasses, useBackgrounds, useSpells, useEquipment, useConditions, useRules, Race, CharacterClass } from "@/hooks/useRulebook";
+import { useRaces, useClasses, useBackgrounds, useSpells, useEquipment, useConditions, useRules, Race, CharacterClass, Spell } from "@/hooks/useRulebook";
 import { RaceCard } from "@/components/rulebook/RaceCard";
 import { RaceDetailModal } from "@/components/rulebook/RaceDetailModal";
 import { ClassCard } from "@/components/rulebook/ClassCard";
 import { ClassDetailModal } from "@/components/rulebook/ClassDetailModal";
 import { SpellCard } from "@/components/rulebook/SpellCard";
+import { SpellDetailModal } from "@/components/rulebook/SpellDetailModal";
 import { EquipmentTable } from "@/components/rulebook/EquipmentTable";
 import { ConditionCard } from "@/components/rulebook/ConditionCard";
 import { RuleSection } from "@/components/rulebook/RuleSection";
 import { Badge } from "@/components/ui/badge";
-
 interface BookPart {
   id: string;
   title: string;
@@ -179,6 +179,8 @@ function SpellsSection() {
   const { data: spells, isLoading } = useSpells();
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState<number | null>(null);
+  const [selectedSpell, setSelectedSpell] = useState<Spell | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -197,6 +199,11 @@ function SpellsSection() {
   });
 
   const levels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+  const handleSpellClick = (spell: Spell) => {
+    setSelectedSpell(spell);
+    setModalOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -227,11 +234,16 @@ function SpellsSection() {
           ))}
         </div>
       </div>
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredSpells?.map((spell) => (
-          <SpellCard key={spell.id} spell={spell} />
+          <SpellCard key={spell.id} spell={spell} onClick={() => handleSpellClick(spell)} />
         ))}
       </div>
+      <SpellDetailModal 
+        spell={selectedSpell} 
+        open={modalOpen} 
+        onOpenChange={setModalOpen} 
+      />
     </div>
   );
 }
