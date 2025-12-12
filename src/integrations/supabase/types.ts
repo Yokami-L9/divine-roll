@@ -70,58 +70,115 @@ export type Database = {
       }
       characters: {
         Row: {
+          alignment: string | null
+          armor_class: number | null
+          avatar_url: string | null
+          background: string | null
           backstory: string | null
+          bond: string | null
           charisma: number
           class: string
           constitution: number
           created_at: string
           dexterity: number
+          equipment: string[] | null
+          flaw: string | null
           hp: number
           id: string
+          ideal: string | null
+          initiative: number | null
           intelligence: number
+          known_spells: string[] | null
+          languages: string[] | null
           level: number
           max_hp: number
           name: string
+          personality_trait: string | null
+          prepared_spells: string[] | null
+          proficiency_bonus: number | null
           race: string
+          saving_throw_proficiencies: string[] | null
+          skill_proficiencies: string[] | null
+          speed: number | null
           strength: number
+          subrace: string | null
+          traits: string[] | null
           updated_at: string
           user_id: string
           wisdom: number
         }
         Insert: {
+          alignment?: string | null
+          armor_class?: number | null
+          avatar_url?: string | null
+          background?: string | null
           backstory?: string | null
+          bond?: string | null
           charisma?: number
           class: string
           constitution?: number
           created_at?: string
           dexterity?: number
+          equipment?: string[] | null
+          flaw?: string | null
           hp?: number
           id?: string
+          ideal?: string | null
+          initiative?: number | null
           intelligence?: number
+          known_spells?: string[] | null
+          languages?: string[] | null
           level?: number
           max_hp?: number
           name: string
+          personality_trait?: string | null
+          prepared_spells?: string[] | null
+          proficiency_bonus?: number | null
           race: string
+          saving_throw_proficiencies?: string[] | null
+          skill_proficiencies?: string[] | null
+          speed?: number | null
           strength?: number
+          subrace?: string | null
+          traits?: string[] | null
           updated_at?: string
           user_id: string
           wisdom?: number
         }
         Update: {
+          alignment?: string | null
+          armor_class?: number | null
+          avatar_url?: string | null
+          background?: string | null
           backstory?: string | null
+          bond?: string | null
           charisma?: number
           class?: string
           constitution?: number
           created_at?: string
           dexterity?: number
+          equipment?: string[] | null
+          flaw?: string | null
           hp?: number
           id?: string
+          ideal?: string | null
+          initiative?: number | null
           intelligence?: number
+          known_spells?: string[] | null
+          languages?: string[] | null
           level?: number
           max_hp?: number
           name?: string
+          personality_trait?: string | null
+          prepared_spells?: string[] | null
+          proficiency_bonus?: number | null
           race?: string
+          saving_throw_proficiencies?: string[] | null
+          skill_proficiencies?: string[] | null
+          speed?: number | null
           strength?: number
+          subrace?: string | null
+          traits?: string[] | null
           updated_at?: string
           user_id?: string
           wisdom?: number
@@ -480,6 +537,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      race_names: {
+        Row: {
+          created_at: string
+          gender: string
+          id: string
+          name: string
+          name_type: string
+          race_name_en: string
+        }
+        Insert: {
+          created_at?: string
+          gender: string
+          id?: string
+          name: string
+          name_type: string
+          race_name_en: string
+        }
+        Update: {
+          created_at?: string
+          gender?: string
+          id?: string
+          name?: string
+          name_type?: string
+          race_name_en?: string
+        }
+        Relationships: []
       }
       races: {
         Row: {
