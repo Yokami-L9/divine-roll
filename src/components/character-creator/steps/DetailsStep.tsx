@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dices, User } from "lucide-react";
+import { FigureGenerator } from "../FigureGenerator";
 
 interface DetailsStepProps {
   character: CharacterData;
@@ -47,7 +48,7 @@ export function DetailsStep({ character, updateCharacter }: DetailsStepProps) {
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6">
         {/* Name and Gender */}
         <Card>
           <CardHeader>
@@ -127,6 +128,9 @@ export function DetailsStep({ character, updateCharacter }: DetailsStepProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Figure Generator */}
+        <FigureGenerator character={character} updateCharacter={updateCharacter} />
 
         {/* Backstory */}
         <Card>
