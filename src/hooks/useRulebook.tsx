@@ -18,6 +18,20 @@ export interface Race {
   }>;
 }
 
+export interface SubclassFeature {
+  name: string;
+  level: number;
+  description: string;
+}
+
+export interface Subclass {
+  name: string;
+  name_en: string;
+  level: number;
+  description: string;
+  features: SubclassFeature[];
+}
+
 export interface CharacterClass {
   id: string;
   name: string;
@@ -31,6 +45,7 @@ export interface CharacterClass {
   skill_choices: { count: number; choices: string[] } | null;
   features: Array<{ level: number; name: string; description: string }>;
   spellcasting: Record<string, unknown> | null;
+  subclasses: Subclass[];
 }
 
 export interface Background {

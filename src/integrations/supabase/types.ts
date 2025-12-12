@@ -142,6 +142,7 @@ export type Database = {
           saving_throws: string[] | null
           skill_choices: Json | null
           spellcasting: Json | null
+          subclasses: Json | null
           weapon_proficiencies: string[] | null
         }
         Insert: {
@@ -157,6 +158,7 @@ export type Database = {
           saving_throws?: string[] | null
           skill_choices?: Json | null
           spellcasting?: Json | null
+          subclasses?: Json | null
           weapon_proficiencies?: string[] | null
         }
         Update: {
@@ -172,6 +174,7 @@ export type Database = {
           saving_throws?: string[] | null
           skill_choices?: Json | null
           spellcasting?: Json | null
+          subclasses?: Json | null
           weapon_proficiencies?: string[] | null
         }
         Relationships: []

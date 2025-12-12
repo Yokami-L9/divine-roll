@@ -106,11 +106,18 @@ export function ClassCard({ characterClass, onClick }: ClassCardProps) {
           </div>
         )}
 
-        {characterClass.spellcasting && (
-          <Badge className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30">
-            Заклинатель
-          </Badge>
-        )}
+        <div className="flex flex-wrap gap-1">
+          {characterClass.spellcasting && (
+            <Badge className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30">
+              Заклинатель
+            </Badge>
+          )}
+          {characterClass.subclasses && characterClass.subclasses.length > 0 && (
+            <Badge variant="secondary" className="text-[10px]">
+              {characterClass.subclasses.length} подклассов
+            </Badge>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
