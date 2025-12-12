@@ -1,12 +1,14 @@
-import { useSpells, useClasses } from "@/hooks/useRulebook";
+import { useSpells, useClasses, Spell } from "@/hooks/useRulebook";
 import { CharacterData } from "@/hooks/useCharacterCreator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Loader2, Wand2, Search } from "lucide-react";
+import { Loader2, Wand2, Search, Info } from "lucide-react";
 import { useState, useMemo } from "react";
+import { SpellDescriptionDialog } from "../SpellDescriptionDialog";
 
 interface SpellsStepProps {
   character: CharacterData;
@@ -29,6 +31,8 @@ export function SpellsStep({ character, updateCharacter }: SpellsStepProps) {
   const { data: spells, isLoading: spellsLoading } = useSpells();
   const { data: classes } = useClasses();
   const [search, setSearch] = useState("");
+  const [selectedSpell, setSelectedSpell] = useState<Spell | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const selectedClass = classes?.find(c => c.name === character.class);
   const hasSpellcasting = selectedClass?.spellcasting !== null;
@@ -108,6 +112,12 @@ export function SpellsStep({ character, updateCharacter }: SpellsStepProps) {
     updateCharacter({ known_spells: currentSpells });
   };
 
+  const openSpellDetails = (spell: Spell, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedSpell(spell);
+    setDialogOpen(true);
+  };
+
   if (spellsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -140,7 +150,7 @@ export function SpellsStep({ character, updateCharacter }: SpellsStepProps) {
       <div>
         <h2 className="text-2xl font-bold mb-2">Выберите заклинания</h2>
         <p className="text-muted-foreground">
-          Выберите начальные заклинания для вашего {character.class}.
+          Выберите начальные заклинания для вашего {character.class}. Нажмите на <Info className="h-4 w-4 inline" /> для просмотра описания.
         </p>
       </div>
 
@@ -198,6 +208,14 @@ export function SpellsStep({ character, updateCharacter }: SpellsStepProps) {
                               </Badge>
                             </div>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                            onClick={(e) => openSpellDetails(spell, e)}
+                          >
+                            <Info className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                          </Button>
                         </div>
                       </CardHeader>
                     </Card>
@@ -246,6 +264,14 @@ export function SpellsStep({ character, updateCharacter }: SpellsStepProps) {
                               )}
                             </div>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                            onClick={(e) => openSpellDetails(spell, e)}
+                          >
+                            <Info className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                          </Button>
                         </div>
                       </CardHeader>
                     </Card>
@@ -256,6 +282,13 @@ export function SpellsStep({ character, updateCharacter }: SpellsStepProps) {
           </div>
         )}
       </div>
+
+      {/* Spell Description Dialog */}
+      <SpellDescriptionDialog
+        spell={selectedSpell}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   );
 }

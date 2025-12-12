@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Check, User, Users, Swords, BookOpen, Brain, Sparkles, FileText } from "lucide-react";
+import { Check, User, Users, Swords, BookOpen, Brain, Sparkles, Backpack, FileText } from "lucide-react";
 
 const STEPS = [
   { id: 0, name: "Раса", icon: Users },
@@ -7,8 +7,9 @@ const STEPS = [
   { id: 2, name: "Характеристики", icon: Brain },
   { id: 3, name: "Предыстория", icon: BookOpen },
   { id: 4, name: "Заклинания", icon: Sparkles },
-  { id: 5, name: "Детали", icon: User },
-  { id: 6, name: "Обзор", icon: FileText },
+  { id: 5, name: "Снаряжение", icon: Backpack },
+  { id: 6, name: "Детали", icon: User },
+  { id: 7, name: "Обзор", icon: FileText },
 ];
 
 interface StepIndicatorProps {

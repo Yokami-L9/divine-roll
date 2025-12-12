@@ -7,6 +7,7 @@ import { ClassStep } from "./steps/ClassStep";
 import { AbilitiesStep } from "./steps/AbilitiesStep";
 import { BackgroundStep } from "./steps/BackgroundStep";
 import { SpellsStep } from "./steps/SpellsStep";
+import { EquipmentStep } from "./steps/EquipmentStep";
 import { DetailsStep } from "./steps/DetailsStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { Button } from "@/components/ui/button";
@@ -36,8 +37,9 @@ export function CharacterCreator() {
       case 2: return true;
       case 3: return !!character.backgroundId;
       case 4: return true;
-      case 5: return !!character.name;
-      case 6: return true;
+      case 5: return true; // Equipment
+      case 6: return !!character.name; // Details
+      case 7: return true; // Review
       default: return true;
     }
   };
@@ -105,8 +107,9 @@ export function CharacterCreator() {
       case 2: return <AbilitiesStep character={character} updateCharacter={updateCharacter} getModifier={getModifier} />;
       case 3: return <BackgroundStep character={character} updateCharacter={updateCharacter} />;
       case 4: return <SpellsStep character={character} updateCharacter={updateCharacter} />;
-      case 5: return <DetailsStep character={character} updateCharacter={updateCharacter} />;
-      case 6: return <ReviewStep character={character} getModifier={getModifier} />;
+      case 5: return <EquipmentStep character={character} updateCharacter={updateCharacter} />;
+      case 6: return <DetailsStep character={character} updateCharacter={updateCharacter} />;
+      case 7: return <ReviewStep character={character} getModifier={getModifier} />;
       default: return null;
     }
   };
@@ -147,7 +150,7 @@ export function CharacterCreator() {
             Назад
           </Button>
 
-          {currentStep < 6 ? (
+          {currentStep < 7 ? (
             <Button onClick={nextStep} disabled={!canProceed()}>
               Далее
               <ChevronRight className="h-4 w-4 ml-2" />

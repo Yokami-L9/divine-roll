@@ -157,7 +157,7 @@ export function useCharacterCreator() {
   }, []);
 
   const nextStep = useCallback(() => {
-    setCurrentStep(prev => Math.min(prev + 1, 6));
+    setCurrentStep(prev => Math.min(prev + 1, 7));
   }, []);
 
   const prevStep = useCallback(() => {
@@ -165,7 +165,7 @@ export function useCharacterCreator() {
   }, []);
 
   const goToStep = useCallback((step: number) => {
-    setCurrentStep(Math.max(0, Math.min(step, 6)));
+    setCurrentStep(Math.max(0, Math.min(step, 7)));
   }, []);
 
   // Calculate modifier
