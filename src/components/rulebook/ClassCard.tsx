@@ -1,35 +1,91 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CharacterClass } from "@/hooks/useRulebook";
-import { Sword, Wand2, Shield, Heart } from "lucide-react";
+import { Axe, Music, Cross, Leaf, Sword, Hand, Sun, Trees, Skull, Flame, Moon, BookOpen } from "lucide-react";
 
-const classIcons: Record<string, React.ReactNode> = {
-  Воин: <Sword className="h-5 w-5" />,
-  Волшебник: <Wand2 className="h-5 w-5" />,
-  Жрец: <Heart className="h-5 w-5" />,
-  Паладин: <Shield className="h-5 w-5" />,
+// Import class images
+import barbarianImg from "@/assets/classes/barbarian.png";
+import bardImg from "@/assets/classes/bard.png";
+import clericImg from "@/assets/classes/cleric.png";
+import druidImg from "@/assets/classes/druid.png";
+import fighterImg from "@/assets/classes/fighter.png";
+import monkImg from "@/assets/classes/monk.png";
+import paladinImg from "@/assets/classes/paladin.png";
+import rangerImg from "@/assets/classes/ranger.png";
+import rogueImg from "@/assets/classes/rogue.png";
+import sorcererImg from "@/assets/classes/sorcerer.png";
+import warlockImg from "@/assets/classes/warlock.png";
+import wizardImg from "@/assets/classes/wizard.png";
+
+const classImages: Record<string, string> = {
+  "Barbarian": barbarianImg,
+  "Bard": bardImg,
+  "Cleric": clericImg,
+  "Druid": druidImg,
+  "Fighter": fighterImg,
+  "Monk": monkImg,
+  "Paladin": paladinImg,
+  "Ranger": rangerImg,
+  "Rogue": rogueImg,
+  "Sorcerer": sorcererImg,
+  "Warlock": warlockImg,
+  "Wizard": wizardImg,
 };
 
-export function ClassCard({ characterClass }: { characterClass: CharacterClass }) {
+const classIcons: Record<string, React.ReactNode> = {
+  Варвар: <Axe className="h-5 w-5" />,
+  Бард: <Music className="h-5 w-5" />,
+  Жрец: <Cross className="h-5 w-5" />,
+  Друид: <Leaf className="h-5 w-5" />,
+  Воин: <Sword className="h-5 w-5" />,
+  Монах: <Hand className="h-5 w-5" />,
+  Паладин: <Sun className="h-5 w-5" />,
+  Следопыт: <Trees className="h-5 w-5" />,
+  Плут: <Skull className="h-5 w-5" />,
+  Чародей: <Flame className="h-5 w-5" />,
+  Колдун: <Moon className="h-5 w-5" />,
+  Волшебник: <BookOpen className="h-5 w-5" />,
+};
+
+interface ClassCardProps {
+  characterClass: CharacterClass;
+  onClick?: () => void;
+}
+
+export function ClassCard({ characterClass, onClick }: ClassCardProps) {
+  const classImage = characterClass.name_en ? classImages[characterClass.name_en] : null;
+
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-            {classIcons[characterClass.name] || <Sword className="h-5 w-5" />}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between">
-              <CardTitle>{characterClass.name}</CardTitle>
-              <Badge variant="secondary">{characterClass.name_en}</Badge>
+    <Card 
+      className="h-full overflow-hidden group hover:shadow-lg hover:border-primary/50 transition-all cursor-pointer"
+      onClick={onClick}
+    >
+      {classImage && (
+        <div className="h-56 overflow-hidden relative">
+          <img 
+            src={classImage} 
+            alt={characterClass.name}
+            className="w-full h-full object-cover object-[center_25%] group-hover:scale-105 transition-transform duration-300"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/10 to-transparent" />
+          <div className="absolute top-3 right-3">
+            <div className="h-10 w-10 rounded-lg bg-background/80 backdrop-blur flex items-center justify-center text-primary">
+              {classIcons[characterClass.name] || <Sword className="h-5 w-5" />}
             </div>
-            <CardDescription className="line-clamp-2">{characterClass.description}</CardDescription>
           </div>
         </div>
+      )}
+
+      <CardHeader className={classImage ? "pt-3 pb-2" : "pb-2"}>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">{characterClass.name}</CardTitle>
+          <Badge variant="secondary" className="text-xs">{characterClass.name_en}</Badge>
+        </div>
+        <CardDescription className="text-xs line-clamp-2">{characterClass.description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-2 text-sm">
+
+      <CardContent className="space-y-3 pt-0">
+        <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
             <span className="text-muted-foreground">Кость хитов:</span>{" "}
             <span className="font-medium">d{characterClass.hit_die}</span>
@@ -41,53 +97,13 @@ export function ClassCard({ characterClass }: { characterClass: CharacterClass }
         </div>
 
         {characterClass.saving_throws && characterClass.saving_throws.length > 0 && (
-          <div>
-            <span className="text-sm text-muted-foreground">Спасброски:</span>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {characterClass.saving_throws.map((st) => (
-                <Badge key={st} variant="outline" className="text-xs">
-                  {st}
-                </Badge>
-              ))}
-            </div>
+          <div className="flex flex-wrap gap-1">
+            {characterClass.saving_throws.map((st) => (
+              <Badge key={st} variant="outline" className="text-[10px]">
+                {st}
+              </Badge>
+            ))}
           </div>
-        )}
-
-        {characterClass.armor_proficiencies && characterClass.armor_proficiencies.length > 0 && (
-          <div>
-            <span className="text-sm text-muted-foreground">Доспехи:</span>
-            <p className="text-xs">{characterClass.armor_proficiencies.join(", ")}</p>
-          </div>
-        )}
-
-        {characterClass.weapon_proficiencies && characterClass.weapon_proficiencies.length > 0 && (
-          <div>
-            <span className="text-sm text-muted-foreground">Оружие:</span>
-            <p className="text-xs">{characterClass.weapon_proficiencies.join(", ")}</p>
-          </div>
-        )}
-
-        {characterClass.features && characterClass.features.length > 0 && (
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="features" className="border-none">
-              <AccordionTrigger className="py-2 text-sm">
-                Умения ({characterClass.features.length})
-              </AccordionTrigger>
-              <AccordionContent className="space-y-2">
-                {characterClass.features.map((feature, i) => (
-                  <div key={i} className="border-l-2 border-primary/30 pl-3">
-                    <p className="font-medium text-sm">
-                      <Badge variant="secondary" className="mr-2 text-xs">
-                        Ур. {feature.level}
-                      </Badge>
-                      {feature.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">{feature.description}</p>
-                  </div>
-                ))}
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
         )}
 
         {characterClass.spellcasting && (
