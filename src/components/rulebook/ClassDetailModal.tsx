@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CharacterClass } from "@/hooks/useRulebook";
-import { Axe, Music, Cross, Leaf, Sword, Hand, Sun, Trees, Skull, Flame, Moon, BookOpen } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CharacterClass, Subclass } from "@/hooks/useRulebook";
+import { Axe, Music, Cross, Leaf, Sword, Hand, Sun, Trees, Skull, Flame, Moon, BookOpen, ChevronRight } from "lucide-react";
 
 // Import class images
 import barbarianImg from "@/assets/classes/barbarian.png";
@@ -54,13 +56,93 @@ interface ClassDetailModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function SubclassCard({ subclass, onClick }: { subclass: Subclass; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors border border-border/50 hover:border-primary/30 group"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+            {subclass.name}
+          </h4>
+          {subclass.name_en && (
+            <p className="text-xs text-muted-foreground">{subclass.name_en}</p>
+          )}
+          <Badge variant="secondary" className="mt-2 text-xs">
+            Ур. {subclass.level}
+          </Badge>
+        </div>
+        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+      </div>
+      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+        {subclass.description}
+      </p>
+    </button>
+  );
+}
+
+function SubclassDetail({ subclass, onBack }: { subclass: Subclass; onBack: () => void }) {
+  return (
+    <div className="space-y-4">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ChevronRight className="h-4 w-4 rotate-180" />
+        Назад к списку
+      </button>
+
+      <div className="bg-gradient-to-r from-primary/10 to-transparent rounded-lg p-4">
+        <h3 className="text-xl font-bold text-foreground">{subclass.name}</h3>
+        {subclass.name_en && (
+          <p className="text-sm text-muted-foreground">{subclass.name_en}</p>
+        )}
+        <Badge variant="secondary" className="mt-2">
+          Выбор на {subclass.level} уровне
+        </Badge>
+      </div>
+
+      <p className="text-muted-foreground">{subclass.description}</p>
+
+      <div>
+        <h4 className="text-sm font-semibold mb-3">Умения подкласса</h4>
+        <div className="space-y-3">
+          {subclass.features?.map((feature, i) => (
+            <div key={i} className="border-l-2 border-primary/30 pl-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant="secondary" className="text-xs">
+                  Ур. {feature.level}
+                </Badge>
+                <p className="font-medium text-sm">{feature.name}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ClassDetailModal({ characterClass, open, onOpenChange }: ClassDetailModalProps) {
+  const [selectedSubclass, setSelectedSubclass] = useState<Subclass | null>(null);
+
   if (!characterClass) return null;
 
   const classImage = characterClass.name_en ? classImages[characterClass.name_en] : null;
+  const subclasses = characterClass.subclasses || [];
+
+  const handleClose = (isOpen: boolean) => {
+    if (!isOpen) {
+      setSelectedSubclass(null);
+    }
+    onOpenChange(isOpen);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl h-[90vh] p-0 overflow-hidden">
         <div className="flex flex-col md:flex-row h-full overflow-hidden">
           {/* Image Section */}
@@ -95,56 +177,85 @@ export function ClassDetailModal({ characterClass, open, onOpenChange }: ClassDe
                 {characterClass.spellcasting && (
                   <Badge className="bg-purple-500/20 text-purple-400">Заклинатель</Badge>
                 )}
+                {subclasses.length > 0 && (
+                  <Badge variant="outline">{subclasses.length} подклассов</Badge>
+                )}
               </div>
             </DialogHeader>
 
-            <ScrollArea className="flex-1 overflow-auto">
-              <div className="p-4 space-y-4 pb-4">
-                <p className="text-muted-foreground">{characterClass.description}</p>
+            <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
+              <TabsList className="mx-4 mt-2 w-fit">
+                <TabsTrigger value="overview">Обзор</TabsTrigger>
+                <TabsTrigger value="features">Умения</TabsTrigger>
+                <TabsTrigger value="subclasses" disabled={subclasses.length === 0}>
+                  Подклассы ({subclasses.length})
+                </TabsTrigger>
+              </TabsList>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <span className="text-xs text-muted-foreground block">Кость хитов</span>
-                    <span className="text-lg font-semibold">d{characterClass.hit_die}</span>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <span className="text-xs text-muted-foreground block">Основная характеристика</span>
-                    <span className="text-sm font-semibold">{characterClass.primary_ability || "—"}</span>
-                  </div>
-                </div>
+              <ScrollArea className="flex-1 overflow-auto">
+                <TabsContent value="overview" className="p-4 m-0 space-y-4">
+                  <p className="text-muted-foreground">{characterClass.description}</p>
 
-                {characterClass.saving_throws && characterClass.saving_throws.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Спасброски</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {characterClass.saving_throws.map((st) => (
-                        <Badge key={st} variant="outline">{st}</Badge>
-                      ))}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <span className="text-xs text-muted-foreground block">Кость хитов</span>
+                      <span className="text-lg font-semibold">d{characterClass.hit_die}</span>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <span className="text-xs text-muted-foreground block">Основная характеристика</span>
+                      <span className="text-sm font-semibold">{characterClass.primary_ability || "—"}</span>
                     </div>
                   </div>
-                )}
 
-                {characterClass.armor_proficiencies && characterClass.armor_proficiencies.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Владение доспехами</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {characterClass.armor_proficiencies.join(", ")}
-                    </p>
-                  </div>
-                )}
+                  {characterClass.saving_throws && characterClass.saving_throws.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Спасброски</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {characterClass.saving_throws.map((st) => (
+                          <Badge key={st} variant="outline">{st}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                {characterClass.weapon_proficiencies && characterClass.weapon_proficiencies.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Владение оружием</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {characterClass.weapon_proficiencies.join(", ")}
-                    </p>
-                  </div>
-                )}
+                  {characterClass.armor_proficiencies && characterClass.armor_proficiencies.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Владение доспехами</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {characterClass.armor_proficiencies.join(", ")}
+                      </p>
+                    </div>
+                  )}
 
-                {characterClass.features && characterClass.features.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-semibold mb-3">Умения класса</h4>
+                  {characterClass.weapon_proficiencies && characterClass.weapon_proficiencies.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Владение оружием</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {characterClass.weapon_proficiencies.join(", ")}
+                      </p>
+                    </div>
+                  )}
+
+                  {characterClass.spellcasting && (
+                    <div className="bg-purple-500/10 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold mb-2 text-purple-400">Заклинательство</h4>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        {(characterClass.spellcasting as { ability?: string }).ability && (
+                          <p><span className="font-medium">Базовая характеристика:</span> {(characterClass.spellcasting as { ability?: string }).ability}</p>
+                        )}
+                        {(characterClass.spellcasting as { cantrips_known?: number }).cantrips_known && (
+                          <p><span className="font-medium">Заговоров на 1 уровне:</span> {(characterClass.spellcasting as { cantrips_known?: number }).cantrips_known}</p>
+                        )}
+                        {(characterClass.spellcasting as { spells_known?: number }).spells_known && (
+                          <p><span className="font-medium">Заклинаний на 1 уровне:</span> {(characterClass.spellcasting as { spells_known?: number }).spells_known}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="features" className="p-4 m-0 space-y-4">
+                  {characterClass.features && characterClass.features.length > 0 && (
                     <div className="space-y-3">
                       {characterClass.features.map((feature, i) => (
                         <div key={i} className="border-l-2 border-primary/30 pl-3">
@@ -158,27 +269,32 @@ export function ClassDetailModal({ characterClass, open, onOpenChange }: ClassDe
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  )}
+                </TabsContent>
 
-                {characterClass.spellcasting && (
-                  <div className="bg-purple-500/10 rounded-lg p-4">
-                    <h4 className="text-sm font-semibold mb-2 text-purple-400">Заклинательство</h4>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      {(characterClass.spellcasting as { ability?: string }).ability && (
-                        <p><span className="font-medium">Базовая характеристика:</span> {(characterClass.spellcasting as { ability?: string }).ability}</p>
-                      )}
-                      {(characterClass.spellcasting as { cantrips_known?: number }).cantrips_known && (
-                        <p><span className="font-medium">Заговоров на 1 уровне:</span> {(characterClass.spellcasting as { cantrips_known?: number }).cantrips_known}</p>
-                      )}
-                      {(characterClass.spellcasting as { spells_known?: number }).spells_known && (
-                        <p><span className="font-medium">Заклинаний на 1 уровне:</span> {(characterClass.spellcasting as { spells_known?: number }).spells_known}</p>
-                      )}
+                <TabsContent value="subclasses" className="p-4 m-0">
+                  {selectedSubclass ? (
+                    <SubclassDetail 
+                      subclass={selectedSubclass} 
+                      onBack={() => setSelectedSubclass(null)} 
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Выберите подкласс, чтобы увидеть подробную информацию о его способностях.
+                      </p>
+                      {subclasses.map((subclass, i) => (
+                        <SubclassCard
+                          key={i}
+                          subclass={subclass}
+                          onClick={() => setSelectedSubclass(subclass)}
+                        />
+                      ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+                  )}
+                </TabsContent>
+              </ScrollArea>
+            </Tabs>
           </div>
         </div>
       </DialogContent>
