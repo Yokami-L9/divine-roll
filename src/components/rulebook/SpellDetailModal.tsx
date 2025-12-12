@@ -1,29 +1,41 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spell } from "@/hooks/useRulebook";
 import { Clock, Target, Timer, Sparkles, BookOpen, Zap } from "lucide-react";
 
-// Import spell school icons
-import evocationIcon from "@/assets/spells/evocation.png";
-import conjurationIcon from "@/assets/spells/conjuration.png";
-import illusionIcon from "@/assets/spells/illusion.png";
-import necromancyIcon from "@/assets/spells/necromancy.png";
-import abjurationIcon from "@/assets/spells/abjuration.png";
-import enchantmentIcon from "@/assets/spells/enchantment.png";
-import transmutationIcon from "@/assets/spells/transmutation.png";
-import divinationIcon from "@/assets/spells/divination.png";
+// Dynamically import all spell icons
+const spellIconsContext = import.meta.glob('@/assets/spells/*.png', { eager: true, import: 'default' });
 
-export const schoolIcons: Record<string, string> = {
-  Воплощение: evocationIcon,
-  Вызов: conjurationIcon,
-  Иллюзия: illusionIcon,
-  Некромантия: necromancyIcon,
-  Ограждение: abjurationIcon,
-  Очарование: enchantmentIcon,
-  Преобразование: transmutationIcon,
-  Прорицание: divinationIcon,
-  Проявление: evocationIcon, // fallback
+// Convert file paths to usable icon map
+const spellIcons: Record<string, string> = {};
+Object.entries(spellIconsContext).forEach(([path, module]) => {
+  const fileName = path.split('/').pop()?.replace('.png', '') || '';
+  spellIcons[fileName] = module as string;
+});
+
+// Helper function to convert spell name to file name format
+function getSpellIconKey(nameEn: string | null): string {
+  if (!nameEn) return '';
+  return nameEn
+    .toLowerCase()
+    .replace(/'/g, '')
+    .replace(/\//g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+// Fallback school icons
+const schoolIconKeys: Record<string, string> = {
+  Воплощение: "evocation",
+  Вызов: "conjuration",
+  Иллюзия: "illusion",
+  Некромантия: "necromancy",
+  Ограждение: "abjuration",
+  Очарование: "enchantment",
+  Преобразование: "transmutation",
+  Прорицание: "divination",
+  Проявление: "evocation",
 };
 
 export const schoolColors: Record<string, string> = {
@@ -60,7 +72,12 @@ export function SpellDetailModal({ spell, open, onOpenChange }: SpellDetailModal
   if (!spell) return null;
 
   const levelText = spell.level === 0 ? "Заговор" : `${spell.level} уровень`;
-  const schoolIcon = schoolIcons[spell.school];
+  
+  // Get unique spell icon, fallback to school icon
+  const spellIconKey = getSpellIconKey(spell.name_en);
+  const schoolIconKey = schoolIconKeys[spell.school] || "evocation";
+  const spellIcon = spellIcons[spellIconKey] || spellIcons[schoolIconKey];
+  
   const gradientColor = schoolColors[spell.school] || "from-primary/30 to-transparent";
   const badgeColor = schoolBadgeColors[spell.school] || "bg-muted";
 
@@ -71,12 +88,12 @@ export function SpellDetailModal({ spell, open, onOpenChange }: SpellDetailModal
           {/* Header with Icon */}
           <div className={`relative bg-gradient-to-br ${gradientColor} p-6`}>
             <div className="flex gap-4">
-              {/* School Icon */}
+              {/* Spell Icon */}
               <div className="w-20 h-20 rounded-lg overflow-hidden shadow-lg border border-border/50 flex-shrink-0">
-                {schoolIcon ? (
+                {spellIcon ? (
                   <img 
-                    src={schoolIcon} 
-                    alt={spell.school}
+                    src={spellIcon} 
+                    alt={spell.name}
                     className="w-full h-full object-cover"
                   />
                 ) : (
