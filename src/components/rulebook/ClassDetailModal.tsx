@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CharacterClass, Subclass } from "@/hooks/useRulebook";
-import { Axe, Music, Cross, Leaf, Sword, Hand, Sun, Trees, Skull, Flame, Moon, BookOpen, ChevronRight } from "lucide-react";
+import { Axe, Music, Cross, Leaf, Sword, Hand, Sun, Trees, Skull, Flame, Moon, BookOpen, ChevronRight, User } from "lucide-react";
 
 // Import class images
 import barbarianImg from "@/assets/classes/barbarian.png";
@@ -20,6 +20,103 @@ import sorcererImg from "@/assets/classes/sorcerer.png";
 import warlockImg from "@/assets/classes/warlock.png";
 import wizardImg from "@/assets/classes/wizard.png";
 
+// Import subclass images - Bard
+import bardCollegeOfLore from "@/assets/subclasses/bard-college-of-lore.png";
+import bardCollegeOfValor from "@/assets/subclasses/bard-college-of-valor.png";
+import bardCollegeOfSwords from "@/assets/subclasses/bard-college-of-swords.png";
+import bardCollegeOfEloquence from "@/assets/subclasses/bard-college-of-eloquence.png";
+
+// Import subclass images - Barbarian
+import barbarianBerserker from "@/assets/subclasses/barbarian-path-of-berserker.png";
+import barbarianTotemWarrior from "@/assets/subclasses/barbarian-path-of-totem-warrior.png";
+import barbarianAncestralGuardian from "@/assets/subclasses/barbarian-path-of-ancestral-guardian.png";
+import barbarianStormHerald from "@/assets/subclasses/barbarian-path-of-storm-herald.png";
+import barbarianZealot from "@/assets/subclasses/barbarian-path-of-zealot.png";
+
+// Import subclass images - Wizard
+import wizardAbjuration from "@/assets/subclasses/wizard-school-of-abjuration.png";
+import wizardConjuration from "@/assets/subclasses/wizard-school-of-conjuration.png";
+import wizardDivination from "@/assets/subclasses/wizard-school-of-divination.png";
+import wizardEnchantment from "@/assets/subclasses/wizard-school-of-enchantment.png";
+import wizardEvocation from "@/assets/subclasses/wizard-school-of-evocation.png";
+import wizardIllusion from "@/assets/subclasses/wizard-school-of-illusion.png";
+import wizardNecromancy from "@/assets/subclasses/wizard-school-of-necromancy.png";
+import wizardTransmutation from "@/assets/subclasses/wizard-school-of-transmutation.png";
+import wizardWarMagic from "@/assets/subclasses/wizard-school-of-war-magic.png";
+
+// Import subclass images - Cleric
+import clericLifeDomain from "@/assets/subclasses/cleric-life-domain.png";
+import clericLightDomain from "@/assets/subclasses/cleric-light-domain.png";
+import clericNatureDomain from "@/assets/subclasses/cleric-nature-domain.png";
+import clericTempestDomain from "@/assets/subclasses/cleric-tempest-domain.png";
+import clericTrickeryDomain from "@/assets/subclasses/cleric-trickery-domain.png";
+import clericWarDomain from "@/assets/subclasses/cleric-war-domain.png";
+import clericKnowledgeDomain from "@/assets/subclasses/cleric-knowledge-domain.png";
+import clericDeathDomain from "@/assets/subclasses/cleric-death-domain.png";
+import clericGraveDomain from "@/assets/subclasses/cleric-grave-domain.png";
+import clericForgeDomain from "@/assets/subclasses/cleric-forge-domain.png";
+
+// Import subclass images - Druid
+import druidCircleLand from "@/assets/subclasses/druid-circle-of-the-land.png";
+import druidCircleMoon from "@/assets/subclasses/druid-circle-of-the-moon.png";
+import druidCircleDreams from "@/assets/subclasses/druid-circle-of-dreams.png";
+import druidCircleShepherd from "@/assets/subclasses/druid-circle-of-the-shepherd.png";
+import druidCircleSpores from "@/assets/subclasses/druid-circle-of-spores.png";
+
+// Import subclass images - Fighter
+import fighterChampion from "@/assets/subclasses/fighter-champion.png";
+import fighterBattleMaster from "@/assets/subclasses/fighter-battle-master.png";
+import fighterEldritchKnight from "@/assets/subclasses/fighter-eldritch-knight.png";
+import fighterSamurai from "@/assets/subclasses/fighter-samurai.png";
+import fighterCavalier from "@/assets/subclasses/fighter-cavalier.png";
+import fighterArcaneArcher from "@/assets/subclasses/fighter-arcane-archer.png";
+
+// Import subclass images - Monk
+import monkOpenHand from "@/assets/subclasses/monk-way-of-the-open-hand.png";
+import monkShadow from "@/assets/subclasses/monk-way-of-shadow.png";
+import monkFourElements from "@/assets/subclasses/monk-way-of-the-four-elements.png";
+import monkSunSoul from "@/assets/subclasses/monk-way-of-the-sun-soul.png";
+import monkDrunkenMaster from "@/assets/subclasses/monk-way-of-the-drunken-master.png";
+import monkKensei from "@/assets/subclasses/monk-way-of-the-kensei.png";
+
+// Import subclass images - Paladin
+import paladinDevotion from "@/assets/subclasses/paladin-oath-of-devotion.png";
+import paladinAncients from "@/assets/subclasses/paladin-oath-of-the-ancients.png";
+import paladinVengeance from "@/assets/subclasses/paladin-oath-of-vengeance.png";
+import paladinConquest from "@/assets/subclasses/paladin-oath-of-conquest.png";
+import paladinRedemption from "@/assets/subclasses/paladin-oath-of-redemption.png";
+import paladinOathbreaker from "@/assets/subclasses/paladin-oathbreaker.png";
+
+// Import subclass images - Ranger
+import rangerHunter from "@/assets/subclasses/ranger-hunter.png";
+import rangerBeastMaster from "@/assets/subclasses/ranger-beast-master.png";
+import rangerGloomStalker from "@/assets/subclasses/ranger-gloom-stalker.png";
+import rangerHorizonWalker from "@/assets/subclasses/ranger-horizon-walker.png";
+import rangerMonsterSlayer from "@/assets/subclasses/ranger-monster-slayer.png";
+
+// Import subclass images - Rogue
+import rogueThief from "@/assets/subclasses/rogue-thief.png";
+import rogueAssassin from "@/assets/subclasses/rogue-assassin.png";
+import rogueArcaneTrickster from "@/assets/subclasses/rogue-arcane-trickster.png";
+import rogueSwashbuckler from "@/assets/subclasses/rogue-swashbuckler.png";
+import rogueInquisitive from "@/assets/subclasses/rogue-inquisitive.png";
+import rogueScout from "@/assets/subclasses/rogue-scout.png";
+
+// Import subclass images - Sorcerer
+import sorcererDraconicBloodline from "@/assets/subclasses/sorcerer-draconic-bloodline.png";
+import sorcererWildMagic from "@/assets/subclasses/sorcerer-wild-magic.png";
+import sorcererDivineSoul from "@/assets/subclasses/sorcerer-divine-soul.png";
+import sorcererShadowMagic from "@/assets/subclasses/sorcerer-shadow-magic.png";
+import sorcererStormSorcery from "@/assets/subclasses/sorcerer-storm-sorcery.png";
+
+// Import subclass images - Warlock
+import warlockFiend from "@/assets/subclasses/warlock-the-fiend.png";
+import warlockArchfey from "@/assets/subclasses/warlock-the-archfey.png";
+import warlockGreatOldOne from "@/assets/subclasses/warlock-the-great-old-one.png";
+import warlockHexblade from "@/assets/subclasses/warlock-the-hexblade.png";
+import warlockCelestial from "@/assets/subclasses/warlock-the-celestial.png";
+import warlockUndying from "@/assets/subclasses/warlock-the-undying.png";
+
 const classImages: Record<string, string> = {
   "Barbarian": barbarianImg,
   "Bard": bardImg,
@@ -33,6 +130,94 @@ const classImages: Record<string, string> = {
   "Sorcerer": sorcererImg,
   "Warlock": warlockImg,
   "Wizard": wizardImg,
+};
+
+const subclassImages: Record<string, string> = {
+  // Bard
+  "College of Lore": bardCollegeOfLore,
+  "College of Valor": bardCollegeOfValor,
+  "College of Swords": bardCollegeOfSwords,
+  "College of Eloquence": bardCollegeOfEloquence,
+  // Barbarian
+  "Path of the Berserker": barbarianBerserker,
+  "Path of the Totem Warrior": barbarianTotemWarrior,
+  "Path of the Ancestral Guardian": barbarianAncestralGuardian,
+  "Path of the Storm Herald": barbarianStormHerald,
+  "Path of the Zealot": barbarianZealot,
+  // Wizard
+  "School of Abjuration": wizardAbjuration,
+  "School of Conjuration": wizardConjuration,
+  "School of Divination": wizardDivination,
+  "School of Enchantment": wizardEnchantment,
+  "School of Evocation": wizardEvocation,
+  "School of Illusion": wizardIllusion,
+  "School of Necromancy": wizardNecromancy,
+  "School of Transmutation": wizardTransmutation,
+  "School of War Magic": wizardWarMagic,
+  // Cleric
+  "Life Domain": clericLifeDomain,
+  "Light Domain": clericLightDomain,
+  "Nature Domain": clericNatureDomain,
+  "Tempest Domain": clericTempestDomain,
+  "Trickery Domain": clericTrickeryDomain,
+  "War Domain": clericWarDomain,
+  "Knowledge Domain": clericKnowledgeDomain,
+  "Death Domain": clericDeathDomain,
+  "Grave Domain": clericGraveDomain,
+  "Forge Domain": clericForgeDomain,
+  // Druid
+  "Circle of the Land": druidCircleLand,
+  "Circle of the Moon": druidCircleMoon,
+  "Circle of Dreams": druidCircleDreams,
+  "Circle of the Shepherd": druidCircleShepherd,
+  "Circle of Spores": druidCircleSpores,
+  // Fighter
+  "Champion": fighterChampion,
+  "Battle Master": fighterBattleMaster,
+  "Eldritch Knight": fighterEldritchKnight,
+  "Samurai": fighterSamurai,
+  "Cavalier": fighterCavalier,
+  "Arcane Archer": fighterArcaneArcher,
+  // Monk
+  "Way of the Open Hand": monkOpenHand,
+  "Way of Shadow": monkShadow,
+  "Way of the Four Elements": monkFourElements,
+  "Way of the Sun Soul": monkSunSoul,
+  "Way of the Drunken Master": monkDrunkenMaster,
+  "Way of the Kensei": monkKensei,
+  // Paladin
+  "Oath of Devotion": paladinDevotion,
+  "Oath of the Ancients": paladinAncients,
+  "Oath of Vengeance": paladinVengeance,
+  "Oath of Conquest": paladinConquest,
+  "Oath of Redemption": paladinRedemption,
+  "Oathbreaker": paladinOathbreaker,
+  // Ranger
+  "Hunter": rangerHunter,
+  "Beast Master": rangerBeastMaster,
+  "Gloom Stalker": rangerGloomStalker,
+  "Horizon Walker": rangerHorizonWalker,
+  "Monster Slayer": rangerMonsterSlayer,
+  // Rogue
+  "Thief": rogueThief,
+  "Assassin": rogueAssassin,
+  "Arcane Trickster": rogueArcaneTrickster,
+  "Swashbuckler": rogueSwashbuckler,
+  "Inquisitive": rogueInquisitive,
+  "Scout": rogueScout,
+  // Sorcerer
+  "Draconic Bloodline": sorcererDraconicBloodline,
+  "Wild Magic": sorcererWildMagic,
+  "Divine Soul": sorcererDivineSoul,
+  "Shadow Magic": sorcererShadowMagic,
+  "Storm Sorcery": sorcererStormSorcery,
+  // Warlock
+  "The Fiend": warlockFiend,
+  "The Archfey": warlockArchfey,
+  "The Great Old One": warlockGreatOldOne,
+  "The Hexblade": warlockHexblade,
+  "The Celestial": warlockCelestial,
+  "The Undying": warlockUndying,
 };
 
 export const classIcons: Record<string, React.ReactNode> = {
@@ -57,33 +242,54 @@ interface ClassDetailModalProps {
 }
 
 function SubclassCard({ subclass, onClick }: { subclass: Subclass; onClick: () => void }) {
+  const subclassImage = subclass.name_en ? subclassImages[subclass.name_en] : null;
+  
   return (
     <button
       onClick={onClick}
-      className="w-full text-left p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors border border-border/50 hover:border-primary/30 group"
+      className="w-full text-left rounded-lg bg-muted/50 hover:bg-muted transition-colors border border-border/50 hover:border-primary/30 group overflow-hidden"
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-            {subclass.name}
-          </h4>
-          {subclass.name_en && (
-            <p className="text-xs text-muted-foreground">{subclass.name_en}</p>
+      <div className="flex">
+        {/* Image */}
+        <div className="w-20 h-20 flex-shrink-0 bg-gradient-to-br from-primary/20 to-transparent">
+          {subclassImage ? (
+            <img 
+              src={subclassImage} 
+              alt={subclass.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <User className="h-8 w-8 text-muted-foreground" />
+            </div>
           )}
-          <Badge variant="secondary" className="mt-2 text-xs">
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                {subclass.name}
+              </h4>
+              {subclass.name_en && (
+                <p className="text-xs text-muted-foreground truncate">{subclass.name_en}</p>
+              )}
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+          </div>
+          <Badge variant="secondary" className="mt-1 text-xs w-fit">
             Ур. {subclass.level}
           </Badge>
         </div>
-        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
       </div>
-      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-        {subclass.description}
-      </p>
     </button>
   );
 }
 
 function SubclassDetail({ subclass, onBack }: { subclass: Subclass; onBack: () => void }) {
+  const subclassImage = subclass.name_en ? subclassImages[subclass.name_en] : null;
+  
   return (
     <div className="space-y-4">
       <button
@@ -94,14 +300,36 @@ function SubclassDetail({ subclass, onBack }: { subclass: Subclass; onBack: () =
         Назад к списку
       </button>
 
-      <div className="bg-gradient-to-r from-primary/10 to-transparent rounded-lg p-4">
-        <h3 className="text-xl font-bold text-foreground">{subclass.name}</h3>
-        {subclass.name_en && (
-          <p className="text-sm text-muted-foreground">{subclass.name_en}</p>
+      <div className="relative rounded-lg overflow-hidden">
+        {subclassImage ? (
+          <div className="relative h-40">
+            <img 
+              src={subclassImage} 
+              alt={subclass.name}
+              className="w-full h-full object-cover object-[center_25%]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+            <div className="absolute bottom-3 left-3 right-3">
+              <h3 className="text-xl font-bold text-foreground">{subclass.name}</h3>
+              {subclass.name_en && (
+                <p className="text-sm text-muted-foreground">{subclass.name_en}</p>
+              )}
+              <Badge variant="secondary" className="mt-2">
+                Выбор на {subclass.level} уровне
+              </Badge>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gradient-to-r from-primary/10 to-transparent p-4">
+            <h3 className="text-xl font-bold text-foreground">{subclass.name}</h3>
+            {subclass.name_en && (
+              <p className="text-sm text-muted-foreground">{subclass.name_en}</p>
+            )}
+            <Badge variant="secondary" className="mt-2">
+              Выбор на {subclass.level} уровне
+            </Badge>
+          </div>
         )}
-        <Badge variant="secondary" className="mt-2">
-          Выбор на {subclass.level} уровне
-        </Badge>
       </div>
 
       <p className="text-muted-foreground">{subclass.description}</p>
