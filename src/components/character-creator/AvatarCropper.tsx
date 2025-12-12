@@ -74,26 +74,31 @@ export function AvatarCropper({ imageUrl, open, onClose, onSave }: AvatarCropper
       canvas.width = size;
       canvas.height = size;
 
-      // Clear canvas
+      // Clear canvas with transparent background
       ctx.clearRect(0, 0, size, size);
 
-      // Create circular clip
-      ctx.beginPath();
-      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-
-      // Calculate image positioning
-      const containerSize = 200; // The visible area size in the cropper
+      // Calculate image positioning to fit entirely (no cropping)
+      const containerSize = 200;
       const scaleFactor = size / containerSize;
       
-      const imgWidth = img.width * scale * scaleFactor;
-      const imgHeight = img.height * scale * scaleFactor;
-      const imgX = (size - imgWidth) / 2 + position.x * scaleFactor;
-      const imgY = (size - imgHeight) / 2 + position.y * scaleFactor;
+      // Scale image proportionally
+      const imgAspect = img.width / img.height;
+      let drawWidth, drawHeight;
+      
+      // Fit the entire image within the avatar area
+      if (imgAspect > 1) {
+        drawWidth = size * scale;
+        drawHeight = (size * scale) / imgAspect;
+      } else {
+        drawHeight = size * scale;
+        drawWidth = (size * scale) * imgAspect;
+      }
+      
+      const imgX = (size - drawWidth) / 2 + position.x * scaleFactor;
+      const imgY = (size - drawHeight) / 2 + position.y * scaleFactor;
 
-      // Draw the image
-      ctx.drawImage(img, imgX, imgY, imgWidth, imgHeight);
+      // Draw the image without clipping (no circular crop)
+      ctx.drawImage(img, imgX, imgY, drawWidth, drawHeight);
 
       // Convert to data URL
       const dataUrl = canvas.toDataURL("image/png");
@@ -118,7 +123,7 @@ export function AvatarCropper({ imageUrl, open, onClose, onSave }: AvatarCropper
           <div className="flex justify-center">
             <div
               ref={containerRef}
-              className="relative w-[200px] h-[200px] rounded-full overflow-hidden border-4 border-primary cursor-move bg-muted"
+              className="relative w-[200px] h-[200px] rounded-lg overflow-hidden border-4 border-primary cursor-move bg-muted"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -130,16 +135,14 @@ export function AvatarCropper({ imageUrl, open, onClose, onSave }: AvatarCropper
               <img
                 src={imageUrl}
                 alt="Cropper"
-                className="absolute select-none pointer-events-none"
+                className="absolute select-none pointer-events-none max-w-none"
                 style={{
-                  transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                  transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px)) scale(${scale})`,
                   transformOrigin: "center center",
                   left: "50%",
                   top: "50%",
-                  marginLeft: "-50%",
-                  marginTop: "-50%",
-                  width: "100%",
-                  height: "auto",
+                  height: "100%",
+                  width: "auto",
                 }}
                 draggable={false}
               />
