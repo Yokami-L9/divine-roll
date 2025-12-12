@@ -1,42 +1,88 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CharacterData } from "@/hooks/useCharacterCreator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wand2, MessageSquare, RotateCcw, Loader2, Cuboid, ChevronLeft, ChevronRight } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Wand2, MessageSquare, Loader2, Cuboid } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Figure3DViewer } from "./Figure3DViewer";
 
 interface FigureGeneratorProps {
   character: CharacterData;
   updateCharacter: (updates: Partial<CharacterData>) => void;
 }
 
-type ViewAngle = "front" | "left" | "right" | "back";
-
-const VIEW_ANGLES: { key: ViewAngle; label: string; prompt: string }[] = [
-  { key: "front", label: "Спереди", prompt: "front view, facing camera" },
-  { key: "left", label: "Слева", prompt: "left side view, profile" },
-  { key: "back", label: "Сзади", prompt: "back view, from behind" },
-  { key: "right", label: "Справа", prompt: "right side view, profile" },
-];
+type TaskStatus = "PENDING" | "IN_PROGRESS" | "SUCCEEDED" | "FAILED" | "EXPIRED";
 
 export function FigureGenerator({ character, updateCharacter }: FigureGeneratorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatingAngle, setGeneratingAngle] = useState<ViewAngle | null>(null);
-  const [figureImages, setFigureImages] = useState<Record<ViewAngle, string | null>>({
-    front: character.avatar_url || null,
-    left: null,
-    right: null,
-    back: null,
-  });
-  const [currentAngle, setCurrentAngle] = useState<ViewAngle>("front");
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [taskStatus, setTaskStatus] = useState<TaskStatus | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [modelUrl, setModelUrl] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(character.avatar_url);
   const [customDescription, setCustomDescription] = useState("");
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  const generateFigure = async (mode: "auto" | "custom", angle: ViewAngle = "front") => {
+  // Poll for task status
+  useEffect(() => {
+    if (!taskId || !isGenerating) return;
+
+    const pollStatus = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-3d-figure", {
+          body: { action: "status", taskId }
+        });
+
+        if (error) throw error;
+
+        console.log("Poll result:", data);
+        setTaskStatus(data.status);
+        setProgress(Math.round((data.progress || 0) * 100));
+
+        if (data.status === "SUCCEEDED") {
+          setModelUrl(data.modelUrl);
+          setThumbnailUrl(data.thumbnailUrl);
+          setIsGenerating(false);
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+          toast.success("3D-фигурка готова!");
+          
+          // Save thumbnail as avatar
+          if (data.thumbnailUrl) {
+            updateCharacter({ avatar_url: data.thumbnailUrl });
+          }
+        } else if (data.status === "FAILED" || data.status === "EXPIRED") {
+          setIsGenerating(false);
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+          toast.error("Ошибка генерации 3D-модели");
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
+      }
+    };
+
+    pollingRef.current = setInterval(pollStatus, 5000);
+    pollStatus(); // Initial poll
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, [taskId, isGenerating, updateCharacter]);
+
+  const generateFigure = async (mode: "auto" | "custom") => {
     if (mode === "custom" && !customDescription.trim()) {
       toast.error("Введите описание персонажа");
       return;
@@ -48,20 +94,20 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
     }
 
     setIsGenerating(true);
-    setGeneratingAngle(angle);
-    
+    setProgress(0);
+    setTaskStatus("PENDING");
+    setModelUrl(null);
+
     try {
-      const anglePrompt = VIEW_ANGLES.find(a => a.key === angle)?.prompt || "front view";
-      
-      const { data, error } = await supabase.functions.invoke("generate-figure", {
+      const { data, error } = await supabase.functions.invoke("generate-3d-figure", {
         body: {
+          action: "generate",
           race: character.race,
           subrace: character.subrace,
           characterClass: character.class,
           equipment: character.equipment,
           customDescription: mode === "custom" ? customDescription : undefined,
-          mode,
-          anglePrompt
+          mode
         }
       });
 
@@ -71,45 +117,25 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
         throw new Error(data.error);
       }
 
-      setFigureImages(prev => ({ ...prev, [angle]: data.imageUrl }));
-      setCurrentAngle(angle);
-      
-      // Save front view as avatar
-      if (angle === "front") {
-        updateCharacter({ avatar_url: data.imageUrl });
-      }
-      
-      toast.success(`Фигурка (${VIEW_ANGLES.find(a => a.key === angle)?.label}) сгенерирована!`);
+      setTaskId(data.taskId);
+      toast.info("Генерация 3D-модели начата. Это может занять 1-3 минуты.");
     } catch (error) {
-      console.error("Error generating figure:", error);
-      toast.error(error instanceof Error ? error.message : "Ошибка генерации фигурки");
-    } finally {
+      console.error("Error starting generation:", error);
+      toast.error(error instanceof Error ? error.message : "Ошибка запуска генерации");
       setIsGenerating(false);
-      setGeneratingAngle(null);
     }
   };
 
-  const generateAllAngles = async (mode: "auto" | "custom") => {
-    for (const angle of VIEW_ANGLES) {
-      await generateFigure(mode, angle.key);
+  const getStatusText = () => {
+    switch (taskStatus) {
+      case "PENDING": return "Ожидание в очереди...";
+      case "IN_PROGRESS": return "Генерация модели...";
+      case "SUCCEEDED": return "Готово!";
+      case "FAILED": return "Ошибка";
+      case "EXPIRED": return "Истекло время";
+      default: return "";
     }
   };
-
-  const rotateLeft = () => {
-    const currentIndex = VIEW_ANGLES.findIndex(a => a.key === currentAngle);
-    const newIndex = (currentIndex - 1 + VIEW_ANGLES.length) % VIEW_ANGLES.length;
-    setCurrentAngle(VIEW_ANGLES[newIndex].key);
-  };
-
-  const rotateRight = () => {
-    const currentIndex = VIEW_ANGLES.findIndex(a => a.key === currentAngle);
-    const newIndex = (currentIndex + 1) % VIEW_ANGLES.length;
-    setCurrentAngle(VIEW_ANGLES[newIndex].key);
-  };
-
-  const currentImage = figureImages[currentAngle];
-  const hasAnyImage = Object.values(figureImages).some(img => img !== null);
-  const allAnglesGenerated = Object.values(figureImages).every(img => img !== null);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -118,21 +144,21 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Cuboid className="h-5 w-5" />
-              Фигурка персонажа
+              3D Фигурка
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {figureImages.front ? (
+            {thumbnailUrl ? (
               <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-muted">
                 <img 
-                  src={figureImages.front} 
-                  alt="Фигурка персонажа"
+                  src={thumbnailUrl} 
+                  alt="3D фигурка персонажа"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute bottom-2 right-2">
                   <Button size="sm" variant="secondary">
-                    <Wand2 className="h-3 w-3 mr-1" />
-                    Изменить
+                    <Cuboid className="h-3 w-3 mr-1" />
+                    Открыть 3D
                   </Button>
                 </div>
               </div>
@@ -140,7 +166,7 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
               <div className="aspect-[4/5] rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                 <Cuboid className="h-12 w-12" />
                 <p className="text-sm text-center">
-                  Нажмите, чтобы сгенерировать<br />фигурку персонажа
+                  Нажмите, чтобы создать<br />3D-фигурку персонажа
                 </p>
               </div>
             )}
@@ -148,79 +174,36 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
         </Card>
       </DialogTrigger>
 
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Cuboid className="h-5 w-5" />
-            Генератор фигурки персонажа
+            3D Генератор фигурки
           </DialogTitle>
         </DialogHeader>
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Figure Viewer */}
+          {/* 3D Viewer */}
           <div className="space-y-4">
-            <div className="relative aspect-[4/5] rounded-lg bg-gradient-to-b from-muted to-muted/50 overflow-hidden">
-              {currentImage ? (
-                <img 
-                  src={currentImage} 
-                  alt={`Фигурка персонажа - ${VIEW_ANGLES.find(a => a.key === currentAngle)?.label}`}
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground">
-                  <Cuboid className="h-24 w-24 opacity-30" />
-                  <p className="text-center text-sm">
-                    {hasAnyImage 
-                      ? `Ракурс "${VIEW_ANGLES.find(a => a.key === currentAngle)?.label}" ещё не сгенерирован`
-                      : "Сгенерируйте фигурку,\nчтобы увидеть её здесь"}
-                  </p>
-                </div>
-              )}
-
-              {isGenerating && generatingAngle === currentAngle && (
-                <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center gap-4">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Генерация...</p>
-                </div>
-              )}
-
-              {/* Round Base */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-32 h-8 bg-gradient-to-t from-zinc-800 to-zinc-700 rounded-full opacity-60 blur-sm" />
+            <div className="aspect-square rounded-lg overflow-hidden">
+              <Figure3DViewer 
+                modelUrl={modelUrl} 
+                isLoading={isGenerating}
+              />
             </div>
 
-            {/* Rotation Controls */}
-            <div className="flex items-center justify-center gap-4">
-              <Button variant="outline" size="icon" onClick={rotateLeft} disabled={!hasAnyImage}>
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              
-              <div className="flex gap-1">
-                {VIEW_ANGLES.map((angle) => (
-                  <Button
-                    key={angle.key}
-                    variant={currentAngle === angle.key ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentAngle(angle.key)}
-                    className="relative"
-                  >
-                    {angle.label}
-                    {figureImages[angle.key] && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
-                    )}
-                    {isGenerating && generatingAngle === angle.key && (
-                      <Loader2 className="h-3 w-3 ml-1 animate-spin" />
-                    )}
-                  </Button>
-                ))}
+            {isGenerating && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{getStatusText()}</span>
+                  <span className="font-medium">{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-2" />
               </div>
-
-              <Button variant="outline" size="icon" onClick={rotateRight} disabled={!hasAnyImage}>
-                <ChevronRight className="h-5 w-5" />
-              </Button>
-            </div>
+            )}
 
             <p className="text-xs text-center text-muted-foreground">
-              Используйте кнопки для просмотра с разных ракурсов • Зелёная точка = ракурс сгенерирован
+              Вращайте модель мышкой • Колёсико для масштаба
             </p>
           </div>
 
@@ -242,7 +225,7 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
                 <Card>
                   <CardContent className="pt-4 space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Автоматически сгенерирует фигурку на основе выбранных параметров персонажа:
+                      Автоматически создаст 3D-фигурку на основе параметров персонажа:
                     </p>
                     
                     <div className="space-y-2 text-sm">
@@ -264,30 +247,18 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Button 
-                        className="w-full" 
-                        onClick={() => generateFigure("auto", currentAngle)}
-                        disabled={isGenerating || !character.race || !character.class}
-                      >
-                        {isGenerating ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Wand2 className="h-4 w-4 mr-2" />
-                        )}
-                        Сгенерировать ({VIEW_ANGLES.find(a => a.key === currentAngle)?.label})
-                      </Button>
-                      
-                      <Button 
-                        variant="outline"
-                        className="w-full" 
-                        onClick={() => generateAllAngles("auto")}
-                        disabled={isGenerating || !character.race || !character.class}
-                      >
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Сгенерировать все ракурсы (4 шт)
-                      </Button>
-                    </div>
+                    <Button 
+                      className="w-full" 
+                      onClick={() => generateFigure("auto")}
+                      disabled={isGenerating || !character.race || !character.class}
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Wand2 className="h-4 w-4 mr-2" />
+                      )}
+                      Сгенерировать 3D-фигурку
+                    </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -296,67 +267,58 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
                 <Card>
                   <CardContent className="pt-4 space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Опишите подробно, как должен выглядеть ваш персонаж:
+                      Опишите подробно внешний вид вашего персонажа для 3D-генерации:
                     </p>
                     
                     <Textarea
-                      placeholder="Например: Высокий худощавый эльф с длинными серебристыми волосами, заплетёнными в косу. Носит потёртый кожаный плащ с капюшоном..."
+                      placeholder="Например: Высокий эльф-воин в серебряных доспехах с золотыми узорами. Длинные белые волосы, острые уши. В руках держит светящийся меч. На плече сидит маленький дракон..."
                       value={customDescription}
                       onChange={(e) => setCustomDescription(e.target.value)}
-                      rows={5}
+                      rows={6}
                       className="resize-none"
                     />
 
-                    <div className="space-y-2">
-                      <Button 
-                        className="w-full" 
-                        onClick={() => generateFigure("custom", currentAngle)}
-                        disabled={isGenerating || !customDescription.trim() || !character.race || !character.class}
-                      >
-                        {isGenerating ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                        )}
-                        Сгенерировать ({VIEW_ANGLES.find(a => a.key === currentAngle)?.label})
-                      </Button>
+                    <Button 
+                      className="w-full" 
+                      onClick={() => generateFigure("custom")}
+                      disabled={isGenerating || !customDescription.trim() || !character.race || !character.class}
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                      )}
+                      Сгенерировать по описанию
+                    </Button>
 
-                      <Button 
-                        variant="outline"
-                        className="w-full" 
-                        onClick={() => generateAllAngles("custom")}
-                        disabled={isGenerating || !customDescription.trim() || !character.race || !character.class}
-                      >
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Сгенерировать все ракурсы (4 шт)
-                      </Button>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p><strong>Советы:</strong></p>
+                      <ul className="list-disc list-inside space-y-0.5">
+                        <li>Опишите позу и выражение лица</li>
+                        <li>Укажите детали одежды и брони</li>
+                        <li>Добавьте оружие и аксессуары</li>
+                        <li>Опишите особые эффекты (свечение, ауру)</li>
+                      </ul>
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
             </Tabs>
 
-            {/* Progress */}
-            {hasAnyImage && (
-              <Card className="bg-muted/50">
-                <CardContent className="pt-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Сгенерировано ракурсов:</span>
-                    <span className="font-medium">
-                      {Object.values(figureImages).filter(img => img !== null).length} / 4
-                    </span>
-                  </div>
-                  <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{ 
-                        width: `${(Object.values(figureImages).filter(img => img !== null).length / 4) * 100}%` 
-                      }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Info */}
+            <Card className="bg-muted/50">
+              <CardContent className="pt-4 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  <strong>О генерации:</strong>
+                </p>
+                <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1">
+                  <li>Генерация занимает 1-3 минуты</li>
+                  <li>Результат — полноценная 3D-модель</li>
+                  <li>Модель можно вращать и рассматривать со всех сторон</li>
+                  <li>Используется Meshy AI для генерации</li>
+                </ul>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </DialogContent>
