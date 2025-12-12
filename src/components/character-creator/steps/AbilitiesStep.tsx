@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { CharacterData, ABILITY_NAMES, STANDARD_ARRAY, POINT_BUY_COSTS } from "@/hooks/useCharacterCreator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,17 +18,41 @@ interface AbilitiesStepProps {
 
 type AbilityKey = keyof typeof ABILITY_NAMES;
 
+const INITIAL_ASSIGNMENTS: Record<AbilityKey, number | null> = {
+  strength: null,
+  dexterity: null,
+  constitution: null,
+  intelligence: null,
+  wisdom: null,
+  charisma: null,
+};
+
 export function AbilitiesStep({ character, updateCharacter, getModifier }: AbilitiesStepProps) {
-  const [standardAssignments, setStandardAssignments] = useState<Record<AbilityKey, number | null>>({
-    strength: null,
-    dexterity: null,
-    constitution: null,
-    intelligence: null,
-    wisdom: null,
-    charisma: null,
-  });
+  const [standardAssignments, setStandardAssignments] = useState<Record<AbilityKey, number | null>>(INITIAL_ASSIGNMENTS);
 
   const abilities: AbilityKey[] = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
+
+  // Reset standard assignments when switching to standard method
+  useEffect(() => {
+    if (character.abilityMethod === "standard") {
+      // Check if current character abilities match standard array
+      const charAbilities = abilities.map(a => character[a]).sort((a, b) => b - a);
+      const sortedStandard = [...STANDARD_ARRAY].sort((a, b) => b - a);
+      const isStandardArray = JSON.stringify(charAbilities) === JSON.stringify(sortedStandard);
+      
+      if (isStandardArray) {
+        // Reconstruct assignments from character data
+        const newAssignments: Record<AbilityKey, number | null> = { ...INITIAL_ASSIGNMENTS };
+        abilities.forEach(ability => {
+          newAssignments[ability] = character[ability];
+        });
+        setStandardAssignments(newAssignments);
+      } else {
+        // Reset to empty
+        setStandardAssignments(INITIAL_ASSIGNMENTS);
+      }
+    }
+  }, [character.abilityMethod]);
 
   // Point buy calculations
   const pointsSpent = abilities.reduce((sum, ability) => {
@@ -37,11 +61,26 @@ export function AbilitiesStep({ character, updateCharacter, getModifier }: Abili
   const pointsRemaining = 27 - pointsSpent;
 
   const handleMethodChange = (method: "standard" | "pointbuy" | "manual") => {
-    updateCharacter({ abilityMethod: method });
+    // Reset standard assignments when switching away from standard
+    if (method !== "standard") {
+      setStandardAssignments(INITIAL_ASSIGNMENTS);
+    }
     
     // Reset abilities when changing method
-    if (method === "pointbuy") {
+    if (method === "standard") {
       updateCharacter({
+        abilityMethod: method,
+        strength: 10,
+        dexterity: 10,
+        constitution: 10,
+        intelligence: 10,
+        wisdom: 10,
+        charisma: 10,
+      });
+      setStandardAssignments(INITIAL_ASSIGNMENTS);
+    } else if (method === "pointbuy") {
+      updateCharacter({
+        abilityMethod: method,
         strength: 8,
         dexterity: 8,
         constitution: 8,
@@ -51,6 +90,7 @@ export function AbilitiesStep({ character, updateCharacter, getModifier }: Abili
       });
     } else if (method === "manual") {
       updateCharacter({
+        abilityMethod: method,
         strength: 10,
         dexterity: 10,
         constitution: 10,
@@ -125,6 +165,9 @@ export function AbilitiesStep({ character, updateCharacter, getModifier }: Abili
     return mod >= 0 ? `+${mod}` : `${mod}`;
   };
 
+  // Check if all standard array values are assigned
+  const allStandardAssigned = abilities.every(ability => standardAssignments[ability] !== null);
+
   return (
     <div className="space-y-6">
       <div>
@@ -148,30 +191,59 @@ export function AbilitiesStep({ character, updateCharacter, getModifier }: Abili
         <TabsContent value="standard" className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Распределите значения: {STANDARD_ARRAY.join(", ")}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Распределите значения: {STANDARD_ARRAY.join(", ")}</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setStandardAssignments(INITIAL_ASSIGNMENTS);
+                    updateCharacter({
+                      strength: 10,
+                      dexterity: 10,
+                      constitution: 10,
+                      intelligence: 10,
+                      wisdom: 10,
+                      charisma: 10,
+                    });
+                  }}
+                  className="text-xs"
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Сбросить
+                </Button>
+              </div>
+              {!allStandardAssigned && (
+                <p className="text-xs text-destructive mt-1">
+                  Распределите все 6 значений для продолжения
+                </p>
+              )}
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {abilities.map((ability) => (
-                  <div key={ability} className="space-y-2">
-                    <Label>{ABILITY_NAMES[ability]}</Label>
-                    <Select
-                      value={standardAssignments[ability]?.toString() || ""}
-                      onValueChange={(v) => handleStandardAssign(ability, v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getAvailableValues(ability).map((value) => (
-                          <SelectItem key={value} value={value.toString()}>
-                            {value} ({formatModifier(getModifier(value))})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
+                {abilities.map((ability) => {
+                  const isAssigned = standardAssignments[ability] !== null;
+                  return (
+                    <div key={ability} className="space-y-2">
+                      <Label className={cn(!isAssigned && "text-destructive")}>{ABILITY_NAMES[ability]}</Label>
+                      <Select
+                        value={standardAssignments[ability]?.toString() || ""}
+                        onValueChange={(v) => handleStandardAssign(ability, v)}
+                      >
+                        <SelectTrigger className={cn(!isAssigned && "border-destructive")}>
+                          <SelectValue placeholder="Выберите" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAvailableValues(ability).map((value) => (
+                            <SelectItem key={value} value={value.toString()}>
+                              {value} ({formatModifier(getModifier(value))})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
