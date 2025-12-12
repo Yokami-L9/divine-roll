@@ -7,6 +7,7 @@ import * as THREE from "three";
 interface Figure3DViewerProps {
   imageUrl: string | null;
   isLoading?: boolean;
+  autoRotate?: boolean;
 }
 
 // Create a curved plane that gives depth illusion
@@ -63,7 +64,7 @@ function RoundBase() {
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <cylinderGeometry args={[0.8, 0.9, 0.12, 32]} />
         <meshStandardMaterial 
-          color="#1a1a1a" 
+          color="#4a4a4a" 
           metalness={0.5} 
           roughness={0.4} 
         />
@@ -72,7 +73,7 @@ function RoundBase() {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
         <torusGeometry args={[0.85, 0.02, 8, 32]} />
         <meshStandardMaterial 
-          color="#333333" 
+          color="#666666" 
           metalness={0.7} 
           roughness={0.3} 
         />
@@ -84,7 +85,7 @@ function RoundBase() {
 function LoadingIndicator() {
   return (
     <Html center>
-      <div className="flex flex-col items-center gap-2 text-white">
+      <div className="flex flex-col items-center gap-2 text-foreground">
         <Loader2 className="h-8 w-8 animate-spin" />
         <p className="text-sm">Загрузка...</p>
       </div>
@@ -92,10 +93,10 @@ function LoadingIndicator() {
   );
 }
 
-export function Figure3DViewer({ imageUrl, isLoading }: Figure3DViewerProps) {
+export function Figure3DViewer({ imageUrl, isLoading, autoRotate = true }: Figure3DViewerProps) {
   if (!imageUrl && !isLoading) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-lg">
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 rounded-lg">
         <p className="text-muted-foreground text-center px-4">
           Сгенерируйте фигурку,<br />чтобы увидеть её здесь
         </p>
@@ -105,7 +106,7 @@ export function Figure3DViewer({ imageUrl, isLoading }: Figure3DViewerProps) {
 
   if (isLoading) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-lg gap-4">
+      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 rounded-lg gap-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">Генерация фигурки...</p>
       </div>
@@ -113,28 +114,18 @@ export function Figure3DViewer({ imageUrl, isLoading }: Figure3DViewerProps) {
   }
 
   return (
-    <div className="w-full h-full rounded-lg overflow-hidden bg-gradient-to-b from-zinc-800 to-zinc-900">
+    <div className="w-full h-full rounded-lg overflow-hidden bg-gradient-to-b from-slate-100 via-slate-200 to-slate-300 dark:from-slate-600 dark:via-slate-700 dark:to-slate-800">
       <Canvas
         camera={{ position: [0, 0, 4], fov: 45 }}
         shadows
         gl={{ antialias: true }}
       >
-        {/* Lighting */}
-        <ambientLight intensity={0.6} />
-        <spotLight 
-          position={[5, 5, 5]} 
-          angle={0.4} 
-          penumbra={1} 
-          intensity={1.2} 
-          castShadow 
-        />
-        <spotLight 
-          position={[-3, 3, -3]} 
-          angle={0.4} 
-          penumbra={1} 
-          intensity={0.6} 
-        />
-        <pointLight position={[0, 2, 3]} intensity={0.5} color="#ffffff" />
+        {/* Bright lighting */}
+        <ambientLight intensity={1.2} />
+        <directionalLight position={[5, 5, 5]} intensity={1.5} />
+        <directionalLight position={[-5, 5, 5]} intensity={0.8} />
+        <pointLight position={[0, 3, 3]} intensity={1} color="#ffffff" />
+        <pointLight position={[0, -2, 2]} intensity={0.5} color="#ffffff" />
         
         <Suspense fallback={<LoadingIndicator />}>
           {imageUrl && <FigurePlane imageUrl={imageUrl} />}
@@ -147,7 +138,7 @@ export function Figure3DViewer({ imageUrl, isLoading }: Figure3DViewerProps) {
           maxDistance={6}
           minPolarAngle={Math.PI / 4}
           maxPolarAngle={Math.PI / 2}
-          autoRotate
+          autoRotate={autoRotate}
           autoRotateSpeed={2}
           enableDamping
           dampingFactor={0.05}

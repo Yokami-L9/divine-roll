@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { CharacterData } from "@/hooks/useCharacterCreator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Wand2, MessageSquare, Loader2, Cuboid, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,6 +22,7 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
   const [isGenerating, setIsGenerating] = useState(false);
   const [figureImage, setFigureImage] = useState<string | null>(character.avatar_url);
   const [customDescription, setCustomDescription] = useState("");
+  const [autoRotate, setAutoRotate] = useState(true);
 
   const generateFigure = async (mode: "auto" | "custom") => {
     if (mode === "custom" && !customDescription.trim()) {
@@ -115,12 +118,25 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
               <Figure3DViewer 
                 imageUrl={figureImage} 
                 isLoading={isGenerating}
+                autoRotate={autoRotate}
               />
             </div>
 
-            <p className="text-xs text-center text-muted-foreground">
-              Вращайте фигурку мышкой • Автоповорот включён
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Вращайте фигурку мышкой
+              </p>
+              <div className="flex items-center gap-2">
+                <Switch 
+                  id="auto-rotate" 
+                  checked={autoRotate} 
+                  onCheckedChange={setAutoRotate}
+                />
+                <Label htmlFor="auto-rotate" className="text-xs cursor-pointer">
+                  Автоповорот
+                </Label>
+              </div>
+            </div>
           </div>
 
           {/* Generation Controls */}
