@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BookOpen, Scroll, Skull, ChevronRight, Users, Swords, Sparkles, Shield, AlertTriangle, BookText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRaces, useClasses, useBackgrounds, useSpells, useEquipment, useConditions, useRules, Race } from "@/hooks/useRulebook";
+import { useRaces, useClasses, useBackgrounds, useSpells, useEquipment, useConditions, useRules, Race, CharacterClass } from "@/hooks/useRulebook";
 import { RaceCard } from "@/components/rulebook/RaceCard";
 import { RaceDetailModal } from "@/components/rulebook/RaceDetailModal";
 import { ClassCard } from "@/components/rulebook/ClassCard";
+import { ClassDetailModal } from "@/components/rulebook/ClassDetailModal";
 import { SpellCard } from "@/components/rulebook/SpellCard";
 import { EquipmentTable } from "@/components/rulebook/EquipmentTable";
 import { ConditionCard } from "@/components/rulebook/ConditionCard";
@@ -130,6 +131,8 @@ function RacesSection() {
 function ClassesSection() {
   const { data: classes, isLoading } = useClasses();
   const [search, setSearch] = useState("");
+  const [selectedClass, setSelectedClass] = useState<CharacterClass | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -145,6 +148,11 @@ function ClassesSection() {
       cls.name_en?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleClassClick = (cls: CharacterClass) => {
+    setSelectedClass(cls);
+    setModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <Input
@@ -155,9 +163,14 @@ function ClassesSection() {
       />
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredClasses?.map((cls) => (
-          <ClassCard key={cls.id} characterClass={cls} />
+          <ClassCard key={cls.id} characterClass={cls} onClick={() => handleClassClick(cls)} />
         ))}
       </div>
+      <ClassDetailModal 
+        characterClass={selectedClass} 
+        open={modalOpen} 
+        onOpenChange={setModalOpen} 
+      />
     </div>
   );
 }
