@@ -162,121 +162,119 @@ export function ReviewStep({ character, getModifier }: ReviewStepProps) {
             </Card>
           </div>
 
-          {/* Abilities */}
+          {/* Abilities with Skills */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {abilities.map((ability) => {
+              const value = character[ability];
+              const mod = getModifier(value);
+              const isSaveProficient = character.saving_throw_proficiencies?.includes(
+                ABILITY_NAMES[ability]
+              );
+              const saveMod = isSaveProficient ? mod + character.proficiency_bonus : mod;
+              
+              // Get skills for this ability
+              const abilitySkills = SKILLS.filter(s => s.ability === ability);
+              
+              return (
+                <Card key={ability} className="overflow-hidden">
+                  {/* Ability Header */}
+                  <CardHeader className="pb-2 bg-primary/5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-base">{ABILITY_NAMES[ability]}</CardTitle>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold">{value}</div>
+                        <div className={cn(
+                          "text-sm font-medium",
+                          mod > 0 && "text-green-500",
+                          mod < 0 && "text-red-500"
+                        )}>
+                          {formatModifier(mod)}
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-3 space-y-2">
+                    {/* Saving Throw */}
+                    <div className={cn(
+                      "flex items-center justify-between py-1.5 px-2 rounded text-sm",
+                      isSaveProficient ? "bg-primary/10 border border-primary/30" : "bg-muted/50"
+                    )}>
+                      <span className={cn(
+                        "flex items-center gap-1",
+                        isSaveProficient && "font-medium"
+                      )}>
+                        <Shield className="h-3 w-3" />
+                        Спасбросок
+                      </span>
+                      <Badge variant={isSaveProficient ? "default" : "outline"} className="text-xs">
+                        {formatModifier(saveMod)}
+                      </Badge>
+                    </div>
+                    
+                    {/* Skills */}
+                    {abilitySkills.map((skill) => {
+                      const isProficient = character.skill_proficiencies.includes(skill.name);
+                      const skillMod = isProficient ? mod + character.proficiency_bonus : mod;
+                      
+                      return (
+                        <div 
+                          key={skill.name}
+                          className={cn(
+                            "flex items-center justify-between py-1.5 px-2 rounded text-sm",
+                            isProficient ? "bg-primary/10" : "bg-muted/30"
+                          )}
+                        >
+                          <span className={isProficient ? "font-medium" : "text-muted-foreground"}>
+                            {skill.name}
+                          </span>
+                          <Badge variant={isProficient ? "default" : "outline"} className="text-xs">
+                            {formatModifier(skillMod)}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Languages & Traits */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Характеристики</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Languages className="h-4 w-4" />
+                Языки и черты
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                {abilities.map((ability) => {
-                  const value = character[ability];
-                  const mod = getModifier(value);
-                  const isProficient = character.saving_throw_proficiencies?.includes(
-                    ABILITY_NAMES[ability]
-                  );
-                  
-                  return (
-                    <div 
-                      key={ability}
-                      className={cn(
-                        "text-center p-3 rounded-lg border",
-                        isProficient && "border-primary bg-primary/10"
-                      )}
-                    >
-                      <div className="text-xs text-muted-foreground mb-1">
-                        {ABILITY_NAMES[ability]}
-                      </div>
-                      <div className="text-2xl font-bold">{value}</div>
-                      <div className={cn(
-                        "text-sm font-medium",
-                        mod > 0 && "text-green-500",
-                        mod < 0 && "text-red-500"
-                      )}>
-                        {formatModifier(mod)}
-                      </div>
-                      {isProficient && (
-                        <Badge className="mt-1 text-xs" variant="outline">
-                          Спас.
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
+            <CardContent className="space-y-4">
+              <div>
+                <div className="text-sm font-medium mb-2">Языки:</div>
+                <div className="flex gap-1 flex-wrap">
+                  {character.languages.map((lang) => (
+                    <Badge key={lang} variant="outline" className="text-xs">
+                      {lang}
+                    </Badge>
+                  ))}
+                </div>
               </div>
+              {character.traits.length > 0 && (
+                <div>
+                  <div className="text-sm font-medium mb-2">Расовые черты:</div>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    {character.traits.slice(0, 6).map((trait, i) => (
+                      <li key={i}>• {trait}</li>
+                    ))}
+                    {character.traits.length > 6 && (
+                      <li className="text-primary">+{character.traits.length - 6} ещё...</li>
+                    )}
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
-
-          {/* Skills & Proficiencies */}
-          <div className="grid md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Навыки
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1 max-h-[200px] overflow-y-auto">
-                  {SKILLS.map((skill) => {
-                    const isProficient = character.skill_proficiencies.includes(skill.name);
-                    const mod = getSkillModifier(skill.ability);
-                    
-                    return (
-                      <div 
-                        key={skill.name}
-                        className={cn(
-                          "flex items-center justify-between py-1 px-2 rounded text-sm",
-                          isProficient && "bg-primary/10"
-                        )}
-                      >
-                        <span className={isProficient ? "font-medium" : "text-muted-foreground"}>
-                          {skill.name}
-                        </span>
-                        <Badge variant={isProficient ? "default" : "outline"} className="text-xs">
-                          {formatModifier(mod)}
-                        </Badge>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Languages className="h-4 w-4" />
-                  Языки и черты
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="text-sm font-medium mb-2">Языки:</div>
-                  <div className="flex gap-1 flex-wrap">
-                    {character.languages.map((lang) => (
-                      <Badge key={lang} variant="outline" className="text-xs">
-                        {lang}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                {character.traits.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium mb-2">Расовые черты:</div>
-                    <ul className="text-xs text-muted-foreground space-y-1">
-                      {character.traits.slice(0, 4).map((trait, i) => (
-                        <li key={i}>• {trait}</li>
-                      ))}
-                      {character.traits.length > 4 && (
-                        <li className="text-primary">+{character.traits.length - 4} ещё...</li>
-                      )}
-                    </ul>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
 
           {/* Spells (if any) */}
           {character.known_spells.length > 0 && (
