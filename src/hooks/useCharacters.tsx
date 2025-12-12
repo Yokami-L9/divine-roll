@@ -137,8 +137,20 @@ export const useCharacters = () => {
   };
 
   useEffect(() => {
-    fetchCharacters();
+    if (user) {
+      fetchCharacters();
+    } else {
+      setCharacters([]);
+      setLoading(false);
+    }
   }, [user]);
+
+  // Refetch when component mounts to get fresh data
+  useEffect(() => {
+    if (user) {
+      fetchCharacters();
+    }
+  }, []);
 
   return {
     characters,
