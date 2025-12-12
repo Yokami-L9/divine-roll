@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BookOpen, Scroll, Skull, ChevronRight, Users, Swords, Sparkles, Shield, AlertTriangle, BookText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRaces, useClasses, useBackgrounds, useSpells, useEquipment, useConditions, useRules, Race, CharacterClass, Spell, Condition } from "@/hooks/useRulebook";
+import { useRaces, useClasses, useBackgrounds, useSpells, useEquipment, useConditions, useRules, Race, CharacterClass, Spell, Condition, Rule } from "@/hooks/useRulebook";
 import { RaceCard } from "@/components/rulebook/RaceCard";
 import { RaceDetailModal } from "@/components/rulebook/RaceDetailModal";
 import { ClassCard } from "@/components/rulebook/ClassCard";
@@ -15,6 +15,7 @@ import { EquipmentTable } from "@/components/rulebook/EquipmentTable";
 import { ConditionCard } from "@/components/rulebook/ConditionCard";
 import { ConditionDetailModal } from "@/components/rulebook/ConditionDetailModal";
 import { RuleSection } from "@/components/rulebook/RuleSection";
+import { RuleDetailModal } from "@/components/rulebook/RuleDetailModal";
 import { Badge } from "@/components/ui/badge";
 interface BookPart {
   id: string;
@@ -316,6 +317,9 @@ function ConditionsSection() {
 
 function RulesSection() {
   const { data: rules, isLoading } = useRules();
+  const [search, setSearch] = useState("");
+  const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -325,25 +329,54 @@ function RulesSection() {
     );
   }
 
-  const groupedRules = rules?.reduce((acc, rule) => {
+  const filteredRules = rules?.filter(
+    (rule) =>
+      rule.title.toLowerCase().includes(search.toLowerCase()) ||
+      rule.category.toLowerCase().includes(search.toLowerCase()) ||
+      rule.content.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const groupedRules = filteredRules?.reduce((acc, rule) => {
     if (!acc[rule.category]) acc[rule.category] = [];
     acc[rule.category].push(rule);
     return acc;
   }, {} as Record<string, typeof rules>);
 
+  const handleRuleClick = (rule: Rule) => {
+    setSelectedRule(rule);
+    setModalOpen(true);
+  };
+
   return (
-    <div className="space-y-8">
-      {groupedRules &&
-        Object.entries(groupedRules).map(([category, categoryRules]) => (
-          <div key={category}>
-            <h3 className="text-xl font-semibold mb-4">{category}</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              {categoryRules?.map((rule) => (
-                <RuleSection key={rule.id} rule={rule} />
-              ))}
+    <div className="space-y-6">
+      <Input
+        placeholder="Поиск правила..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="max-w-md"
+      />
+      <div className="space-y-8">
+        {groupedRules &&
+          Object.entries(groupedRules).map(([category, categoryRules]) => (
+            <div key={category}>
+              <h3 className="text-xl font-semibold mb-4">{category}</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                {categoryRules?.map((rule) => (
+                  <RuleSection 
+                    key={rule.id} 
+                    rule={rule} 
+                    onClick={() => handleRuleClick(rule)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+      </div>
+      <RuleDetailModal 
+        rule={selectedRule} 
+        open={modalOpen} 
+        onOpenChange={setModalOpen} 
+      />
     </div>
   );
 }

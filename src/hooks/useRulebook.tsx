@@ -102,6 +102,11 @@ export interface Condition {
   effects: string[] | null;
 }
 
+export interface RuleSubsection {
+  title: string;
+  content: string;
+}
+
 export interface Rule {
   id: string;
   category: string;
@@ -109,6 +114,7 @@ export interface Rule {
   content: string;
   chapter: number | null;
   book: string;
+  subsections: RuleSubsection[] | null;
 }
 
 export function useRaces() {
@@ -207,7 +213,10 @@ export function useRules() {
         .order("category")
         .order("chapter");
       if (error) throw error;
-      return data as Rule[];
+      return data.map(rule => ({
+        ...rule,
+        subsections: (rule.subsections as unknown as RuleSubsection[]) || [],
+      })) as Rule[];
     },
   });
 }
