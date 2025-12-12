@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, Save, Loader2 } from "lucide-react";
+import { ChevronLeft, Save, Loader2, User } from "lucide-react";
 import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
 
@@ -38,6 +38,7 @@ interface CharacterData {
   bond: string | null;
   flaw: string | null;
   backstory: string | null;
+  avatar_url: string | null;
 }
 
 const ALIGNMENTS = [
@@ -191,7 +192,21 @@ const CharacterEdit = () => {
               Отмена
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold">Редактирование персонажа</h1>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden bg-gradient-gold">
+              {character.avatar_url ? (
+                <img 
+                  src={character.avatar_url} 
+                  alt={character.name}
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: 'center 15%' }}
+                />
+              ) : (
+                <User className="w-6 h-6 text-primary-foreground" />
+              )}
+            </div>
+            <h1 className="text-2xl font-bold">Редактирование персонажа</h1>
+          </div>
           <Button onClick={handleSave} disabled={saving} className="gap-2">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Сохранить
