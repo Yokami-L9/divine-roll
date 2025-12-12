@@ -153,6 +153,7 @@ export function CharacterCreator() {
         bond: character.bond,
         flaw: character.flaw,
         backstory: character.backstory,
+        avatar_url: character.avatar_url,
       });
 
       if (error) throw error;
