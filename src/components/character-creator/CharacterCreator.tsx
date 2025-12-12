@@ -30,15 +30,82 @@ export function CharacterCreator() {
     calculateHP,
   } = useCharacterCreator();
 
+  // Get spell limits for validation
+  const getSpellLimits = () => {
+    switch (character.class) {
+      case "Волшебник": return { cantrips: 3, known: 6 };
+      case "Чародей": return { cantrips: 4, known: 2 };
+      case "Бард": return { cantrips: 2, known: 4 };
+      case "Колдун": return { cantrips: 2, known: 2 };
+      case "Жрец":
+      case "Друид": return { cantrips: 3, known: 0 }; // Prepared casters - no known spells needed
+      case "Паладин":
+      case "Следопыт": return { cantrips: 0, known: 0 }; // No spells at level 1
+      default: return { cantrips: 0, known: 0 };
+    }
+  };
+
+  // Check if abilities are properly distributed
+  const areAbilitiesValid = () => {
+    const abilities = [character.strength, character.dexterity, character.constitution, 
+                      character.intelligence, character.wisdom, character.charisma];
+    
+    if (character.abilityMethod === "standard") {
+      // All values should be from standard array and all assigned
+      const standardArray = [15, 14, 13, 12, 10, 8];
+      const sortedAbilities = [...abilities].sort((a, b) => b - a);
+      return JSON.stringify(sortedAbilities) === JSON.stringify(standardArray);
+    } else if (character.abilityMethod === "pointbuy") {
+      // Points should be fully spent (27 points)
+      const pointCosts: Record<number, number> = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 };
+      const spent = abilities.reduce((sum, val) => sum + (pointCosts[val] || 0), 0);
+      return spent === 27;
+    } else {
+      // Manual - just check all are between 1-20
+      return abilities.every(a => a >= 1 && a <= 20);
+    }
+  };
+
+  // Check if background personality is filled
+  const isBackgroundValid = () => {
+    return !!character.backgroundId && 
+           !!character.personality_trait && 
+           !!character.ideal && 
+           !!character.bond && 
+           !!character.flaw;
+  };
+
+  // Check if all required spells are selected
+  const areSpellsValid = () => {
+    const limits = getSpellLimits();
+    if (limits.cantrips === 0 && limits.known === 0) return true;
+    
+    // Count selected cantrips and spells
+    const selectedCount = character.known_spells.length;
+    const requiredTotal = limits.cantrips + limits.known;
+    
+    return selectedCount >= requiredTotal;
+  };
+
+  // Check if equipment is selected
+  const isEquipmentValid = () => {
+    // User explicitly chose "no equipment"
+    if (character.equipment.includes("__NO_EQUIPMENT__")) return true;
+    
+    // Check if equipment array has valid items (not just background items)
+    const validEquipment = character.equipment.filter(e => e !== "__NO_EQUIPMENT__");
+    return validEquipment.length > 0;
+  };
+
   const canProceed = () => {
     switch (currentStep) {
       case 0: return !!character.raceId;
       case 1: return !!character.classId;
-      case 2: return true;
-      case 3: return !!character.backgroundId;
-      case 4: return true;
-      case 5: return true; // Equipment
-      case 6: return !!character.name; // Details
+      case 2: return areAbilitiesValid();
+      case 3: return isBackgroundValid();
+      case 4: return areSpellsValid();
+      case 5: return isEquipmentValid();
+      case 6: return !!character.name && !!character.gender;
       case 7: return true; // Review
       default: return true;
     }
@@ -78,7 +145,7 @@ export function CharacterCreator() {
         skill_proficiencies: character.skill_proficiencies,
         saving_throw_proficiencies: character.saving_throw_proficiencies,
         languages: character.languages,
-        equipment: character.equipment,
+        equipment: character.equipment.filter(e => e !== "__NO_EQUIPMENT__"),
         traits: character.traits,
         known_spells: character.known_spells,
         personality_trait: character.personality_trait,
