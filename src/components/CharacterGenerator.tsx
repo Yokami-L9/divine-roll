@@ -406,6 +406,7 @@ const CharacterGenerator = () => {
         bond: character.bond,
         flaw: character.flaw,
         backstory: character.backstory,
+        avatar_url: character.avatar_url,
       });
 
       if (error) throw error;
@@ -455,7 +456,7 @@ const CharacterGenerator = () => {
       case 4: return <SpellsStep character={character} updateCharacter={updateCharacter} />;
       case 5: return <EquipmentStep character={character} updateCharacter={updateCharacter} />;
       case 6: return <DetailsStep character={character} updateCharacter={updateCharacter} />;
-      case 7: return <ReviewStep character={character} getModifier={getModifier} />;
+      case 7: return <ReviewStep character={character} getModifier={getModifier} updateCharacter={updateCharacter} />;
       default: return null;
     }
   };
