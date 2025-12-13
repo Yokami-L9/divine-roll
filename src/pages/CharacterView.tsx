@@ -2,18 +2,54 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSpells, Spell } from "@/hooks/useRulebook";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ChevronLeft, Edit, Save, X, Loader2, Shield, Heart, 
-  Footprints, Star, User, Sword, BookOpen, Sparkles, Info
+  ChevronLeft, Loader2, Shield, Heart, 
+  Footprints, Star, User, Sparkles, Languages,
+  Swords, Package, BookOpen
 } from "lucide-react";
 import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
+import { cn } from "@/lib/utils";
+import { SpellDescriptionDialog } from "@/components/character-creator/SpellDescriptionDialog";
+import { InventoryGrid } from "@/components/character/InventoryGrid";
+import { CharacterJournal } from "@/components/character/CharacterJournal";
+
+// Dynamically import all spell icons
+const spellIconsContext = import.meta.glob('@/assets/spells/*.png', { eager: true, import: 'default' });
+
+const spellIcons: Record<string, string> = {};
+Object.entries(spellIconsContext).forEach(([path, module]) => {
+  const fileName = path.split('/').pop()?.replace('.png', '') || '';
+  spellIcons[fileName] = module as string;
+});
+
+function getSpellIconKey(nameEn: string | null): string {
+  if (!nameEn) return '';
+  return nameEn
+    .toLowerCase()
+    .replace(/'/g, '')
+    .replace(/\//g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+const schoolIconKeys: Record<string, string> = {
+  Воплощение: "evocation",
+  Вызов: "conjuration",
+  Иллюзия: "illusion",
+  Некромантия: "necromancy",
+  Ограждение: "abjuration",
+  Очарование: "enchantment",
+  Преобразование: "transmutation",
+  Прорицание: "divination",
+  Проявление: "evocation",
+};
 
 interface CharacterData {
   id: string;
@@ -51,21 +87,6 @@ interface CharacterData {
   avatar_url: string | null;
 }
 
-interface SpellData {
-  id: string;
-  name: string;
-  level: number;
-  school: string;
-  casting_time: string;
-  range: string;
-  components: string;
-  duration: string;
-  description: string;
-  higher_levels: string | null;
-  concentration: boolean | null;
-  ritual: boolean | null;
-}
-
 const ABILITY_NAMES: Record<string, string> = {
   strength: "Сила",
   dexterity: "Ловкость",
@@ -96,15 +117,20 @@ const SKILLS: { name: string; ability: string }[] = [
   { name: "Уход за животными", ability: "wisdom" },
 ];
 
+type AbilityKey = keyof typeof ABILITY_NAMES;
+
 const CharacterView = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { data: allSpells } = useSpells();
   const [character, setCharacter] = useState<CharacterData | null>(null);
-  const [spells, setSpells] = useState<SpellData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSpell, setSelectedSpell] = useState<SpellData | null>(null);
+  const [selectedSpell, setSelectedSpell] = useState<Spell | null>(null);
   const [spellDialogOpen, setSpellDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const abilities: AbilityKey[] = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
 
   useEffect(() => {
     if (id && user) {
@@ -128,18 +154,6 @@ const CharacterView = () => {
       }
 
       setCharacter(data);
-
-      // Fetch spells if character has any
-      if (data.known_spells && data.known_spells.length > 0) {
-        const { data: spellsData } = await supabase
-          .from("spells")
-          .select("*")
-          .in("id", data.known_spells);
-        
-        if (spellsData) {
-          setSpells(spellsData);
-        }
-      }
     } catch (error) {
       console.error("Error fetching character:", error);
       toast.error("Ошибка загрузки персонажа");
@@ -149,31 +163,36 @@ const CharacterView = () => {
   };
 
   const getModifier = (score: number) => Math.floor((score - 10) / 2);
-  
   const formatModifier = (mod: number) => (mod >= 0 ? `+${mod}` : `${mod}`);
 
-  const getSkillModifier = (skillName: string, abilityKey: string) => {
-    if (!character) return 0;
-    const abilityScore = character[abilityKey as keyof CharacterData] as number;
-    const abilityMod = getModifier(abilityScore);
-    const isProficient = character.skill_proficiencies?.includes(skillName) || false;
-    const profBonus = character.proficiency_bonus || 2;
-    return abilityMod + (isProficient ? profBonus : 0);
+  const getSpell = (spellId: string) => {
+    return allSpells?.find(s => s.id === spellId);
   };
 
-  const getSavingThrowModifier = (abilityKey: string) => {
-    if (!character) return 0;
-    const abilityScore = character[abilityKey as keyof CharacterData] as number;
-    const abilityMod = getModifier(abilityScore);
-    const abilityName = ABILITY_NAMES[abilityKey];
-    const isProficient = character.saving_throw_proficiencies?.includes(abilityName) || false;
-    const profBonus = character.proficiency_bonus || 2;
-    return abilityMod + (isProficient ? profBonus : 0);
-  };
-
-  const openSpellDetails = (spell: SpellData) => {
+  const openSpellDetails = (spell: Spell) => {
     setSelectedSpell(spell);
     setSpellDialogOpen(true);
+  };
+
+  const handleUpdateEquipment = async (newEquipment: string[]) => {
+    if (!character || !id) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("characters")
+        .update({ equipment: newEquipment })
+        .eq("id", id);
+
+      if (error) throw error;
+      setCharacter({ ...character, equipment: newEquipment });
+      toast.success("Инвентарь обновлён");
+    } catch (error) {
+      console.error("Error updating equipment:", error);
+      toast.error("Не удалось обновить инвентарь");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!user) {
@@ -219,6 +238,8 @@ const CharacterView = () => {
     );
   }
 
+  const proficiencyBonus = character.proficiency_bonus || 2;
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -231,297 +252,350 @@ const CharacterView = () => {
               Назад
             </Link>
           </Button>
-          <Link to={`/characters/${id}/edit`}>
-            <Button className="gap-2">
-              <Edit className="h-4 w-4" />
-              Редактировать
-            </Button>
-          </Link>
         </div>
 
-        {/* Character Header */}
-        <Card className="p-6 mb-6">
-          <div className="flex items-start gap-6">
-            <div className="w-24 h-24 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden bg-gradient-gold">
-              {character.avatar_url ? (
-                <img 
-                  src={character.avatar_url} 
-                  alt={character.name}
-                  className="w-full h-full object-cover"
-                  style={{ objectPosition: 'center 15%' }}
-                />
-              ) : (
-                <User className="w-12 h-12 text-primary-foreground" />
-              )}
-            </div>
-            <div className="flex-1">
-              <h1 className="text-3xl font-serif font-bold mb-2">{character.name}</h1>
-              <p className="text-lg text-muted-foreground mb-3">
-                {character.race}{character.subrace ? ` (${character.subrace})` : ""} • {character.class} • Уровень {character.level}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {character.background && (
-                  <Badge variant="secondary">{character.background}</Badge>
-                )}
-                {character.alignment && (
-                  <Badge variant="outline">{character.alignment}</Badge>
-                )}
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Combat Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <Card className="p-4 text-center">
-            <Shield className="w-6 h-6 mx-auto mb-2 text-primary" />
-            <div className="text-2xl font-bold">{character.armor_class || 10}</div>
-            <div className="text-sm text-muted-foreground">Класс брони</div>
-          </Card>
-          <Card className="p-4 text-center">
-            <Heart className="w-6 h-6 mx-auto mb-2 text-destructive" />
-            <div className="text-2xl font-bold">{character.hp}/{character.max_hp}</div>
-            <div className="text-sm text-muted-foreground">Хиты</div>
-          </Card>
-          <Card className="p-4 text-center">
-            <Footprints className="w-6 h-6 mx-auto mb-2 text-primary" />
-            <div className="text-2xl font-bold">{character.speed || 30}</div>
-            <div className="text-sm text-muted-foreground">Скорость</div>
-          </Card>
-          <Card className="p-4 text-center">
-            <Star className="w-6 h-6 mx-auto mb-2 text-primary" />
-            <div className="text-2xl font-bold">+{character.proficiency_bonus || 2}</div>
-            <div className="text-sm text-muted-foreground">Мастерство</div>
-          </Card>
-          <Card className="p-4 text-center">
-            <Sword className="w-6 h-6 mx-auto mb-2 text-primary" />
-            <div className="text-2xl font-bold">{formatModifier(getModifier(character.dexterity))}</div>
-            <div className="text-sm text-muted-foreground">Инициатива</div>
-          </Card>
-        </div>
-
-        <Tabs defaultValue="abilities" className="space-y-6">
-          <TabsList className="bg-card border">
-            <TabsTrigger value="abilities">Характеристики</TabsTrigger>
-            <TabsTrigger value="spells">Заклинания</TabsTrigger>
-            <TabsTrigger value="equipment">Снаряжение</TabsTrigger>
-            <TabsTrigger value="personality">Личность</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="abilities">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(ABILITY_NAMES).map(([key, name]) => {
-                const score = character[key as keyof CharacterData] as number;
-                const mod = getModifier(score);
-                const saveMod = getSavingThrowModifier(key);
-                const isSaveProficient = character.saving_throw_proficiencies?.includes(name) || false;
-                const relatedSkills = SKILLS.filter(s => s.ability === key);
-
-                return (
-                  <Card key={key} className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">{name}</h3>
-                        <div className="text-2xl font-bold">
-                          {score} <span className="text-muted-foreground text-lg">({formatModifier(mod)})</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className={`flex items-center justify-between text-sm p-2 rounded ${isSaveProficient ? 'bg-primary/10' : 'bg-muted/50'}`}>
-                        <span className="flex items-center gap-2">
-                          {isSaveProficient && <div className="w-2 h-2 rounded-full bg-primary" />}
-                          Спасбросок
-                        </span>
-                        <span className="font-medium">{formatModifier(saveMod)}</span>
-                      </div>
-
-                      {relatedSkills.map(skill => {
-                        const skillMod = getSkillModifier(skill.name, key);
-                        const isProficient = character.skill_proficiencies?.includes(skill.name) || false;
-                        
-                        return (
-                          <div 
-                            key={skill.name} 
-                            className={`flex items-center justify-between text-sm p-2 rounded ${isProficient ? 'bg-primary/10' : 'bg-muted/50'}`}
-                          >
-                            <span className="flex items-center gap-2">
-                              {isProficient && <div className="w-2 h-2 rounded-full bg-primary" />}
-                              {skill.name}
-                            </span>
-                            <span className="font-medium">{formatModifier(skillMod)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {/* Languages & Traits */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-              {character.languages && character.languages.length > 0 && (
-                <Card className="p-4">
-                  <h3 className="font-semibold mb-3">Языки</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {character.languages.map((lang, idx) => (
-                      <Badge key={idx} variant="secondary">{lang}</Badge>
-                    ))}
+        <ScrollArea className="h-[calc(100vh-180px)]">
+          <div className="space-y-4 pr-4">
+            {/* Character Header */}
+            <Card className="bg-gradient-to-br from-primary/20 to-transparent">
+              <CardContent className="py-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-full bg-background flex items-center justify-center border-4 border-primary shadow-lg overflow-hidden">
+                    {character.avatar_url ? (
+                      <img 
+                        src={character.avatar_url} 
+                        alt={character.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-3xl font-bold text-primary">
+                        {character.name?.charAt(0) || "?"}
+                      </span>
+                    )}
                   </div>
-                </Card>
-              )}
+                  <div className="flex-1">
+                    <h1 className="text-2xl font-bold">{character.name}</h1>
+                    <p className="text-lg text-muted-foreground">
+                      {character.race} {character.subrace ? `(${character.subrace})` : ""} • {character.class}
+                    </p>
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      <Badge>Уровень {character.level}</Badge>
+                      {character.alignment && <Badge variant="outline">{character.alignment}</Badge>}
+                      {character.background && <Badge variant="secondary">{character.background}</Badge>}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-              {character.traits && character.traits.length > 0 && (
-                <Card className="p-4">
-                  <h3 className="font-semibold mb-3">Расовые особенности</h3>
-                  <ul className="space-y-1 text-sm">
-                    {character.traits.map((trait, idx) => (
-                      <li key={idx} className="text-muted-foreground">• {trait}</li>
-                    ))}
-                  </ul>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="spells">
-            {spells.length === 0 ? (
-              <Card className="p-8 text-center">
-                <Sparkles className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">Нет известных заклинаний</p>
+            {/* Combat Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="text-center">
+                <CardContent className="py-4">
+                  <Heart className="h-6 w-6 mx-auto mb-2 text-red-500" />
+                  <div className="text-2xl font-bold">{character.hp}/{character.max_hp}</div>
+                  <div className="text-xs text-muted-foreground">Хиты</div>
+                </CardContent>
               </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {spells
-                  .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
-                  .map(spell => (
-                    <Card 
-                      key={spell.id} 
-                      className="p-4 hover:border-primary/50 transition-colors cursor-pointer"
-                      onClick={() => openSpellDetails(spell)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold">{spell.name}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {spell.level === 0 ? "Заговор" : `${spell.level} уровень`} • {spell.school}
-                          </p>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Info className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex gap-2 mt-2">
-                        {spell.concentration && <Badge variant="outline" className="text-xs">К</Badge>}
-                        {spell.ritual && <Badge variant="outline" className="text-xs">Р</Badge>}
+              <Card className="text-center">
+                <CardContent className="py-4">
+                  <Shield className="h-6 w-6 mx-auto mb-2 text-blue-500" />
+                  <div className="text-2xl font-bold">{character.armor_class || 10}</div>
+                  <div className="text-xs text-muted-foreground">КД</div>
+                </CardContent>
+              </Card>
+              <Card className="text-center">
+                <CardContent className="py-4">
+                  <Swords className="h-6 w-6 mx-auto mb-2 text-orange-500" />
+                  <div className="text-2xl font-bold">
+                    {formatModifier(getModifier(character.dexterity))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Инициатива</div>
+                </CardContent>
+              </Card>
+              <Card className="text-center">
+                <CardContent className="py-4">
+                  <Footprints className="h-6 w-6 mx-auto mb-2 text-green-500" />
+                  <div className="text-2xl font-bold">{character.speed || 30}</div>
+                  <div className="text-xs text-muted-foreground">Скорость (фт)</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Tabs defaultValue="abilities" className="space-y-4">
+              <TabsList className="bg-card border w-full justify-start">
+                <TabsTrigger value="abilities">Характеристики</TabsTrigger>
+                <TabsTrigger value="spells">Заклинания</TabsTrigger>
+                <TabsTrigger value="inventory">Инвентарь</TabsTrigger>
+                <TabsTrigger value="journal">Дневник</TabsTrigger>
+                <TabsTrigger value="personality">Личность</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="abilities">
+                {/* Abilities Grid - same style as ReviewStep */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {abilities.map((ability) => {
+                    const value = character[ability];
+                    const abilityMod = getModifier(value);
+                    const isSaveProficient = character.saving_throw_proficiencies?.includes(
+                      ABILITY_NAMES[ability]
+                    );
+                    const saveMod = isSaveProficient ? abilityMod + proficiencyBonus : abilityMod;
+                    const abilitySkills = SKILLS.filter(s => s.ability === ability);
+                    
+                    return (
+                      <Card key={ability} className="overflow-hidden">
+                        <CardHeader className="pb-2 bg-primary/5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-base">{ABILITY_NAMES[ability]}</CardTitle>
+                              <p className="text-xs text-muted-foreground">Модификатор</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold">{value}</div>
+                              <div className={cn(
+                                "text-lg font-bold",
+                                abilityMod > 0 && "text-green-500",
+                                abilityMod < 0 && "text-red-500",
+                                abilityMod === 0 && "text-muted-foreground"
+                              )}>
+                                {formatModifier(abilityMod)}
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-3 space-y-1.5">
+                          {/* Saving Throw */}
+                          <div className={cn(
+                            "flex items-center justify-between py-1.5 px-2 rounded text-sm border",
+                            isSaveProficient ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-transparent"
+                          )}>
+                            <span className={cn(
+                              "flex items-center gap-1.5",
+                              isSaveProficient && "font-medium"
+                            )}>
+                              {isSaveProficient && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                              <Shield className="h-3 w-3" />
+                              Спасбросок
+                            </span>
+                            <span className={cn(
+                              "font-mono text-sm font-bold",
+                              saveMod > 0 && "text-green-500",
+                              saveMod < 0 && "text-red-500"
+                            )}>
+                              {formatModifier(saveMod)}
+                            </span>
+                          </div>
+                          
+                          {/* Skills */}
+                          {abilitySkills.length > 0 && (
+                            <div className="pt-1 border-t border-border/50">
+                              <p className="text-xs text-muted-foreground mb-1.5 px-2">Навыки:</p>
+                              {abilitySkills.map((skill) => {
+                                const isProficient = character.skill_proficiencies?.includes(skill.name) || false;
+                                const skillMod = isProficient 
+                                  ? abilityMod + proficiencyBonus 
+                                  : abilityMod;
+                                
+                                return (
+                                  <div 
+                                    key={skill.name}
+                                    className={cn(
+                                      "flex items-center justify-between py-1.5 px-2 rounded text-sm",
+                                      isProficient ? "bg-primary/10" : ""
+                                    )}
+                                  >
+                                    <span className={cn(
+                                      "flex items-center gap-1.5",
+                                      isProficient ? "font-medium" : "text-muted-foreground"
+                                    )}>
+                                      {isProficient && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                                      {skill.name}
+                                    </span>
+                                    <span className={cn(
+                                      "font-mono text-sm font-bold",
+                                      skillMod > 0 && "text-green-500",
+                                      skillMod < 0 && "text-red-500",
+                                      skillMod === 0 && "text-muted-foreground"
+                                    )}>
+                                      {formatModifier(skillMod)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {/* Proficiency Bonus */}
+                <div className="text-center text-sm text-muted-foreground mt-4">
+                  <Badge variant="outline" className="font-mono">
+                    Бонус мастерства: {formatModifier(proficiencyBonus)}
+                  </Badge>
+                  <p className="mt-1 text-xs">
+                    • Маркер показывает владение навыком или спасброском
+                  </p>
+                </div>
+
+                {/* Languages & Traits */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  {character.languages && character.languages.length > 0 && (
+                    <Card className="p-4">
+                      <h3 className="font-semibold mb-3 flex items-center gap-2">
+                        <Languages className="h-4 w-4" />
+                        Языки
+                      </h3>
+                      <div className="flex gap-1 flex-wrap">
+                        {character.languages.map((lang, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
+                            {lang}
+                          </Badge>
+                        ))}
                       </div>
                     </Card>
-                  ))}
-              </div>
-            )}
-          </TabsContent>
+                  )}
 
-          <TabsContent value="equipment">
-            {!character.equipment || character.equipment.length === 0 ? (
-              <Card className="p-8 text-center">
-                <Sword className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">Нет снаряжения</p>
-              </Card>
-            ) : (
-              <Card className="p-4">
-                <h3 className="font-semibold mb-3">Снаряжение</h3>
-                <ul className="space-y-2">
-                  {character.equipment
-                    .filter(e => e !== "__NO_EQUIPMENT__")
-                    .map((item, idx) => (
-                      <li key={idx} className="flex items-center gap-2 text-sm">
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                        {item}
-                      </li>
-                    ))}
-                </ul>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="personality">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {character.personality_trait && (
-                <Card className="p-4">
-                  <h3 className="font-semibold mb-2">Черта характера</h3>
-                  <p className="text-muted-foreground">{character.personality_trait}</p>
-                </Card>
-              )}
-              {character.ideal && (
-                <Card className="p-4">
-                  <h3 className="font-semibold mb-2">Идеал</h3>
-                  <p className="text-muted-foreground">{character.ideal}</p>
-                </Card>
-              )}
-              {character.bond && (
-                <Card className="p-4">
-                  <h3 className="font-semibold mb-2">Привязанность</h3>
-                  <p className="text-muted-foreground">{character.bond}</p>
-                </Card>
-              )}
-              {character.flaw && (
-                <Card className="p-4">
-                  <h3 className="font-semibold mb-2">Слабость</h3>
-                  <p className="text-muted-foreground">{character.flaw}</p>
-                </Card>
-              )}
-              {character.backstory && (
-                <Card className="p-4 md:col-span-2">
-                  <h3 className="font-semibold mb-2">Предыстория</h3>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{character.backstory}</p>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Spell Dialog */}
-        <Dialog open={spellDialogOpen} onOpenChange={setSpellDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[80vh]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                {selectedSpell?.name}
-                <Badge variant="secondary">
-                  {selectedSpell?.level === 0 ? "Заговор" : `${selectedSpell?.level} уровень`}
-                </Badge>
-              </DialogTitle>
-            </DialogHeader>
-            <ScrollArea className="max-h-[60vh] pr-4">
-              {selectedSpell && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div><strong>Школа:</strong> {selectedSpell.school}</div>
-                    <div><strong>Время:</strong> {selectedSpell.casting_time}</div>
-                    <div><strong>Дистанция:</strong> {selectedSpell.range}</div>
-                    <div><strong>Компоненты:</strong> {selectedSpell.components}</div>
-                    <div><strong>Длительность:</strong> {selectedSpell.duration}</div>
-                    <div className="flex gap-2">
-                      {selectedSpell.concentration && <Badge>Концентрация</Badge>}
-                      {selectedSpell.ritual && <Badge variant="outline">Ритуал</Badge>}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Описание</h4>
-                    <p className="text-muted-foreground whitespace-pre-wrap">{selectedSpell.description}</p>
-                  </div>
-                  {selectedSpell.higher_levels && (
-                    <div>
-                      <h4 className="font-semibold mb-2">На более высоких уровнях</h4>
-                      <p className="text-muted-foreground">{selectedSpell.higher_levels}</p>
-                    </div>
+                  {character.traits && character.traits.length > 0 && (
+                    <Card className="p-4">
+                      <h3 className="font-semibold mb-3">Расовые черты</h3>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        {character.traits.map((trait, i) => (
+                          <li key={i}>• {trait}</li>
+                        ))}
+                      </ul>
+                    </Card>
                   )}
                 </div>
-              )}
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
+              </TabsContent>
+
+              <TabsContent value="spells">
+                {!character.known_spells || character.known_spells.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <Sparkles className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">Нет известных заклинаний</p>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {character.known_spells.map((spellId) => {
+                      const spell = getSpell(spellId);
+                      if (!spell) return null;
+                      
+                      const spellIconKey = getSpellIconKey(spell.name_en);
+                      const schoolIconKey = schoolIconKeys[spell.school] || "evocation";
+                      const spellIcon = spellIcons[spellIconKey] || spellIcons[schoolIconKey];
+                      
+                      return (
+                        <div 
+                          key={spellId}
+                          className="flex items-center gap-2 p-2 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
+                          onClick={() => openSpellDetails(spell)}
+                        >
+                          <div className="w-8 h-8 rounded overflow-hidden border border-border/50 flex-shrink-0">
+                            {spellIcon ? (
+                              <img 
+                                src={spellIcon} 
+                                alt={spell.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-muted flex items-center justify-center">
+                                <Sparkles className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{spell.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {spell.level === 0 ? "Заговор" : `${spell.level} ур.`} • {spell.school}
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            {spell.concentration && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0">К</Badge>
+                            )}
+                            {spell.ritual && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0">Р</Badge>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="inventory">
+                <Card className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Package className="h-5 w-5 text-primary" />
+                      Инвентарь
+                    </h3>
+                    {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                  </div>
+                  <InventoryGrid 
+                    items={character.equipment || []}
+                    onUpdate={handleUpdateEquipment}
+                    columns={6}
+                    rows={5}
+                  />
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="journal">
+                <Card className="p-4">
+                  <CharacterJournal characterId={id!} />
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="personality">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {character.personality_trait && (
+                    <Card className="p-4">
+                      <h3 className="font-semibold mb-2">Черта характера</h3>
+                      <p className="text-muted-foreground text-sm">{character.personality_trait}</p>
+                    </Card>
+                  )}
+                  {character.ideal && (
+                    <Card className="p-4">
+                      <h3 className="font-semibold mb-2">Идеал</h3>
+                      <p className="text-muted-foreground text-sm">{character.ideal}</p>
+                    </Card>
+                  )}
+                  {character.bond && (
+                    <Card className="p-4">
+                      <h3 className="font-semibold mb-2">Привязанность</h3>
+                      <p className="text-muted-foreground text-sm">{character.bond}</p>
+                    </Card>
+                  )}
+                  {character.flaw && (
+                    <Card className="p-4">
+                      <h3 className="font-semibold mb-2">Слабость</h3>
+                      <p className="text-muted-foreground text-sm">{character.flaw}</p>
+                    </Card>
+                  )}
+                  {character.backstory && (
+                    <Card className="p-4 md:col-span-2">
+                      <h3 className="font-semibold mb-2">Предыстория</h3>
+                      <p className="text-muted-foreground text-sm whitespace-pre-wrap">{character.backstory}</p>
+                    </Card>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </ScrollArea>
+
+        {/* Spell Dialog */}
+        <SpellDescriptionDialog
+          spell={selectedSpell}
+          open={spellDialogOpen}
+          onOpenChange={setSpellDialogOpen}
+        />
       </main>
     </div>
   );

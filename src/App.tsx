@@ -21,7 +21,7 @@ import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import CharacterCreate from "./pages/CharacterCreate";
 import CharacterView from "./pages/CharacterView";
-import CharacterEdit from "./pages/CharacterEdit";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,7 +41,7 @@ const App = () => (
             <Route path="/characters" element={<Characters />} />
             <Route path="/characters/create" element={<CharacterCreate />} />
             <Route path="/characters/:id" element={<CharacterView />} />
-            <Route path="/characters/:id/edit" element={<CharacterEdit />} />
+            
             <Route path="/community" element={<Community />} />
             <Route path="/npc" element={<NPC />} />
             <Route path="/monsters" element={<Monsters />} />

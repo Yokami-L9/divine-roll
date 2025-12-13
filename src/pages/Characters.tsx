@@ -2,7 +2,7 @@ import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserCircle, Plus, Backpack, BookText, Users, Sparkles, Calendar, Trash2, Loader2 } from "lucide-react";
+import { UserCircle, Plus, Users, Sparkles, Calendar, Trash2, Loader2 } from "lucide-react";
 import CharacterGenerator from "@/components/CharacterGenerator";
 import SessionNotes from "@/components/SessionNotes";
 import { useCharacters } from "@/hooks/useCharacters";
@@ -116,41 +116,6 @@ const Characters = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="p-6 bg-card border-border hover:border-primary/50 transition-colors">
-                <div className="flex flex-col items-center text-center gap-4">
-                  <div className="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center">
-                    <UserCircle className="w-10 h-10 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-serif font-semibold mb-1">Портрет и био</h3>
-                    <p className="text-sm text-muted-foreground">Добавьте изображение и историю персонажа</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-6 bg-card border-border hover:border-primary/50 transition-colors">
-                <div className="flex flex-col items-center text-center gap-4">
-                  <div className="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center">
-                    <Backpack className="w-10 h-10 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-serif font-semibold mb-1">Инвентарь</h3>
-                    <p className="text-sm text-muted-foreground">Отслеживайте снаряжение и ресурсы</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-6 bg-card border-border hover:border-primary/50 transition-colors">
-                <div className="flex flex-col items-center text-center gap-4">
-                  <div className="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center">
-                    <BookText className="w-10 h-10 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-serif font-semibold mb-1">Дневник</h3>
-                    <p className="text-sm text-muted-foreground">Записывайте приключения и открытия</p>
-                  </div>
-                </div>
-              </Card>
-            </div>
           </TabsContent>
 
           <TabsContent value="generator">
