@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   ChevronLeft, Loader2, Shield, Heart, 
   Footprints, Star, User, Sparkles, Languages,
-  Swords, Package, BookOpen
+  Swords, Package, BookOpen, Plus
 } from "lucide-react";
 import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { SpellDescriptionDialog } from "@/components/character-creator/SpellDescriptionDialog";
 import { InventoryGrid } from "@/components/character/InventoryGrid";
 import { CharacterJournal } from "@/components/character/CharacterJournal";
+import { LevelUpDialog } from "@/components/character/LevelUpDialog";
 
 // Dynamically import all spell icons
 const spellIconsContext = import.meta.glob('@/assets/spells/*.png', { eager: true, import: 'default' });
@@ -57,6 +58,7 @@ interface CharacterData {
   race: string;
   subrace: string | null;
   class: string;
+  class_levels: Record<string, number> | null;
   level: number;
   background: string | null;
   alignment: string | null;
@@ -129,6 +131,7 @@ const CharacterView = () => {
   const [selectedSpell, setSelectedSpell] = useState<Spell | null>(null);
   const [spellDialogOpen, setSpellDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [levelUpOpen, setLevelUpOpen] = useState(false);
 
   const abilities: AbilityKey[] = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
 
@@ -153,7 +156,10 @@ const CharacterView = () => {
         return;
       }
 
-      setCharacter(data);
+      setCharacter({
+        ...data,
+        class_levels: (data.class_levels as Record<string, number>) || { [data.class]: data.level }
+      });
     } catch (error) {
       console.error("Error fetching character:", error);
       toast.error("Ошибка загрузки персонажа");
@@ -190,6 +196,45 @@ const CharacterView = () => {
     } catch (error) {
       console.error("Error updating equipment:", error);
       toast.error("Не удалось обновить инвентарь");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLevelUp = async (selectedClass: string, newClassLevels: Record<string, number>, hpIncrease: number) => {
+    if (!character || !id) return;
+
+    setSaving(true);
+    try {
+      const newLevel = character.level + 1;
+      const newProficiencyBonus = Math.floor((newLevel - 1) / 4) + 2;
+      
+      const { error } = await supabase
+        .from("characters")
+        .update({ 
+          level: newLevel,
+          class_levels: newClassLevels,
+          hp: character.hp + hpIncrease,
+          max_hp: character.max_hp + hpIncrease,
+          proficiency_bonus: newProficiencyBonus,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      setCharacter({ 
+        ...character, 
+        level: newLevel,
+        class_levels: newClassLevels,
+        hp: character.hp + hpIncrease,
+        max_hp: character.max_hp + hpIncrease,
+        proficiency_bonus: newProficiencyBonus,
+      });
+      
+      toast.success(`Уровень повышен до ${newLevel}! +${hpIncrease} HP`);
+    } catch (error) {
+      console.error("Error leveling up:", error);
+      toast.error("Не удалось повысить уровень");
     } finally {
       setSaving(false);
     }
@@ -278,8 +323,19 @@ const CharacterView = () => {
                     <p className="text-lg text-muted-foreground">
                       {character.race} {character.subrace ? `(${character.subrace})` : ""} • {character.class}
                     </p>
-                    <div className="flex gap-2 mt-2 flex-wrap">
+                    <div className="flex gap-2 mt-2 flex-wrap items-center">
                       <Badge>Уровень {character.level}</Badge>
+                      {character.level < 20 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 w-6 p-0 rounded-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                          onClick={() => setLevelUpOpen(true)}
+                          disabled={saving}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
                       {character.alignment && <Badge variant="outline">{character.alignment}</Badge>}
                       {character.background && <Badge variant="secondary">{character.background}</Badge>}
                     </div>
@@ -595,6 +651,25 @@ const CharacterView = () => {
           spell={selectedSpell}
           open={spellDialogOpen}
           onOpenChange={setSpellDialogOpen}
+        />
+
+        {/* Level Up Dialog */}
+        <LevelUpDialog
+          open={levelUpOpen}
+          onOpenChange={setLevelUpOpen}
+          characterName={character.name}
+          currentLevel={character.level}
+          classLevels={character.class_levels || { [character.class]: character.level }}
+          primaryClass={character.class}
+          abilities={{
+            strength: character.strength,
+            dexterity: character.dexterity,
+            constitution: character.constitution,
+            intelligence: character.intelligence,
+            wisdom: character.wisdom,
+            charisma: character.charisma,
+          }}
+          onLevelUp={handleLevelUp}
         />
       </main>
     </div>

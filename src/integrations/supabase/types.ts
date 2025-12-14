@@ -116,6 +116,7 @@ export type Database = {
           bond: string | null
           charisma: number
           class: string
+          class_levels: Json | null
           constitution: number
           created_at: string
           dexterity: number
@@ -154,6 +155,7 @@ export type Database = {
           bond?: string | null
           charisma?: number
           class: string
+          class_levels?: Json | null
           constitution?: number
           created_at?: string
           dexterity?: number
@@ -192,6 +194,7 @@ export type Database = {
           bond?: string | null
           charisma?: number
           class?: string
+          class_levels?: Json | null
           constitution?: number
           created_at?: string
           dexterity?: number
