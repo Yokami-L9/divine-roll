@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Check, Sword, Shield, Wand2, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LevelSelector } from "./LevelSelector";
 
 // Import class images
 const classIconsContext = import.meta.glob('@/assets/classes/*.png', { eager: true, import: 'default' });
@@ -25,13 +26,31 @@ export function ClassStep({ character, updateCharacter, calculateHP }: ClassStep
 
   const handleClassSelect = (cls: CharacterClass) => {
     const hp = calculateHP(cls.hit_die, character.constitution, character.level);
+    const proficiencyBonus = Math.floor((character.level - 1) / 4) + 2;
     
     updateCharacter({
       class: cls.name,
       classId: cls.id,
+      class_levels: { [cls.name]: character.level },
       hp: hp,
       max_hp: hp,
+      proficiency_bonus: proficiencyBonus,
       saving_throw_proficiencies: cls.saving_throws || [],
+    });
+  };
+
+  const handleLevelChange = (newLevel: number) => {
+    const selectedClass = classes?.find(c => c.id === character.classId);
+    const hitDie = selectedClass?.hit_die || 8;
+    const hp = calculateHP(hitDie, character.constitution, newLevel);
+    const proficiencyBonus = Math.floor((newLevel - 1) / 4) + 2;
+    
+    updateCharacter({
+      level: newLevel,
+      class_levels: character.class ? { [character.class]: newLevel } : {},
+      hp: hp,
+      max_hp: hp,
+      proficiency_bonus: proficiencyBonus,
     });
   };
 
@@ -47,14 +66,20 @@ export function ClassStep({ character, updateCharacter, calculateHP }: ClassStep
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Выберите класс</h2>
-        <p className="text-muted-foreground">
-          Класс определяет ваши боевые способности, заклинания и роль в группе.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold mb-2">Выберите класс</h2>
+          <p className="text-muted-foreground">
+            Класс определяет ваши боевые способности, заклинания и роль в группе.
+          </p>
+        </div>
+        <LevelSelector 
+          level={character.level} 
+          onChange={handleLevelChange}
+        />
       </div>
 
-      <ScrollArea className="h-[500px] pr-4">
+      <ScrollArea className="h-[450px] pr-4">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {classes?.map((cls) => {
             const isSelected = character.classId === cls.id;
@@ -124,9 +149,12 @@ export function ClassStep({ character, updateCharacter, calculateHP }: ClassStep
       {/* Selected class details */}
       {selectedClass && (
         <div className="p-4 bg-primary/10 rounded-lg space-y-4">
-          <h4 className="font-semibold">Выбрано: {selectedClass.name}</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold">Выбрано: {selectedClass.name}</h4>
+            <Badge variant="default">Уровень {character.level}</Badge>
+          </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Кость хитов:</span>
               <p className="font-medium">к{selectedClass.hit_die}</p>
@@ -140,8 +168,12 @@ export function ClassStep({ character, updateCharacter, calculateHP }: ClassStep
               <p className="font-medium">{selectedClass.saving_throws?.join(", ") || "—"}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">HP на 1 ур.:</span>
+              <span className="text-muted-foreground">HP:</span>
               <p className="font-medium">{character.max_hp}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Мастерство:</span>
+              <p className="font-medium">+{character.proficiency_bonus}</p>
             </div>
           </div>
 

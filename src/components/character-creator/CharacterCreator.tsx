@@ -128,6 +128,7 @@ export function CharacterCreator() {
         race: character.race,
         subrace: character.subrace,
         class: character.class,
+        class_levels: character.class_levels,
         level: character.level,
         background: character.background,
         alignment: character.alignment,
