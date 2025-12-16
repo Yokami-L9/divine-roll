@@ -59,6 +59,7 @@ interface CharacterData {
   subrace: string | null;
   class: string;
   class_levels: Record<string, number> | null;
+  subclasses: Record<string, string> | null;
   level: number;
   background: string | null;
   alignment: string | null;
@@ -158,7 +159,8 @@ const CharacterView = () => {
 
       setCharacter({
         ...data,
-        class_levels: (data.class_levels as Record<string, number>) || { [data.class]: data.level }
+        class_levels: (data.class_levels as Record<string, number>) || { [data.class]: data.level },
+        subclasses: (data.subclasses as Record<string, string>) || {}
       });
     } catch (error) {
       console.error("Error fetching character:", error);
@@ -201,7 +203,13 @@ const CharacterView = () => {
     }
   };
 
-  const handleLevelUp = async (selectedClass: string, newClassLevels: Record<string, number>, hpIncrease: number) => {
+  const handleLevelUp = async (
+    selectedClass: string, 
+    newClassLevels: Record<string, number>, 
+    hpIncrease: number,
+    selectedSubclass: string | null,
+    newSubclasses: Record<string, string>
+  ) => {
     if (!character || !id) return;
 
     setSaving(true);
@@ -214,6 +222,7 @@ const CharacterView = () => {
         .update({ 
           level: newLevel,
           class_levels: newClassLevels,
+          subclasses: newSubclasses,
           hp: character.hp + hpIncrease,
           max_hp: character.max_hp + hpIncrease,
           proficiency_bonus: newProficiencyBonus,
@@ -226,12 +235,14 @@ const CharacterView = () => {
         ...character, 
         level: newLevel,
         class_levels: newClassLevels,
+        subclasses: newSubclasses,
         hp: character.hp + hpIncrease,
         max_hp: character.max_hp + hpIncrease,
         proficiency_bonus: newProficiencyBonus,
       });
       
-      toast.success(`Уровень повышен до ${newLevel}! +${hpIncrease} HP`);
+      const subclassMsg = selectedSubclass ? ` Выбран архетип: ${selectedSubclass}` : '';
+      toast.success(`Уровень повышен до ${newLevel}! +${hpIncrease} HP${subclassMsg}`);
     } catch (error) {
       console.error("Error leveling up:", error);
       toast.error("Не удалось повысить уровень");
@@ -669,6 +680,7 @@ const CharacterView = () => {
             wisdom: character.wisdom,
             charisma: character.charisma,
           }}
+          characterSubclasses={character.subclasses || {}}
           onLevelUp={handleLevelUp}
         />
       </main>
