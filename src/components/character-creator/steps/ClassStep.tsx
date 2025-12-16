@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Check, Sword, Shield, Wand2, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LevelSelector } from "./LevelSelector";
+import { SubclassSelector, SUBCLASS_LEVELS } from "./SubclassSelector";
 
 // Import class images
 const classIconsContext = import.meta.glob('@/assets/classes/*.png', { eager: true, import: 'default' });
@@ -28,10 +29,15 @@ export function ClassStep({ character, updateCharacter, calculateHP }: ClassStep
     const hp = calculateHP(cls.hit_die, character.constitution, character.level);
     const proficiencyBonus = Math.floor((character.level - 1) / 4) + 2;
     
+    // Check if subclass is needed at current level
+    const subclassLevel = SUBCLASS_LEVELS[cls.name] || 3;
+    const needsSubclass = character.level >= subclassLevel;
+    
     updateCharacter({
       class: cls.name,
       classId: cls.id,
       class_levels: { [cls.name]: character.level },
+      subclasses: needsSubclass ? {} : character.subclasses, // Reset if needs new selection
       hp: hp,
       max_hp: hp,
       proficiency_bonus: proficiencyBonus,
@@ -45,12 +51,25 @@ export function ClassStep({ character, updateCharacter, calculateHP }: ClassStep
     const hp = calculateHP(hitDie, character.constitution, newLevel);
     const proficiencyBonus = Math.floor((newLevel - 1) / 4) + 2;
     
+    // Check if subclass selection needs to be reset
+    const subclassLevel = SUBCLASS_LEVELS[character.class] || 3;
+    const hadSubclass = Object.keys(character.subclasses).length > 0;
+    const needsSubclass = newLevel >= subclassLevel;
+    
     updateCharacter({
       level: newLevel,
       class_levels: character.class ? { [character.class]: newLevel } : {},
+      // Keep subclass if still valid, otherwise reset
+      subclasses: (hadSubclass && needsSubclass) ? character.subclasses : {},
       hp: hp,
       max_hp: hp,
       proficiency_bonus: proficiencyBonus,
+    });
+  };
+
+  const handleSubclassSelect = (subclassName: string) => {
+    updateCharacter({
+      subclasses: { [character.class]: subclassName },
     });
   };
 
@@ -63,6 +82,7 @@ export function ClassStep({ character, updateCharacter, calculateHP }: ClassStep
   }
 
   const selectedClass = classes?.find(c => c.id === character.classId);
+  const selectedSubclass = character.subclasses[character.class] || null;
 
   return (
     <div className="space-y-6">
@@ -79,7 +99,7 @@ export function ClassStep({ character, updateCharacter, calculateHP }: ClassStep
         />
       </div>
 
-      <ScrollArea className="h-[450px] pr-4">
+      <ScrollArea className="h-[350px] pr-4">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {classes?.map((cls) => {
             const isSelected = character.classId === cls.id;
@@ -148,62 +168,72 @@ export function ClassStep({ character, updateCharacter, calculateHP }: ClassStep
 
       {/* Selected class details */}
       {selectedClass && (
-        <div className="p-4 bg-primary/10 rounded-lg space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="font-semibold">Выбрано: {selectedClass.name}</h4>
-            <Badge variant="default">Уровень {character.level}</Badge>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">Кость хитов:</span>
-              <p className="font-medium">к{selectedClass.hit_die}</p>
+        <div className="space-y-4">
+          <div className="p-4 bg-primary/10 rounded-lg space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold">Выбрано: {selectedClass.name}</h4>
+              <Badge variant="default">Уровень {character.level}</Badge>
             </div>
-            <div>
-              <span className="text-muted-foreground">Основная:</span>
-              <p className="font-medium">{selectedClass.primary_ability || "—"}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Спасброски:</span>
-              <p className="font-medium">{selectedClass.saving_throws?.join(", ") || "—"}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">HP:</span>
-              <p className="font-medium">{character.max_hp}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Мастерство:</span>
-              <p className="font-medium">+{character.proficiency_bonus}</p>
-            </div>
-          </div>
-
-          {selectedClass.armor_proficiencies && selectedClass.armor_proficiencies.length > 0 && (
-            <div>
-              <span className="text-sm text-muted-foreground">Владение доспехами:</span>
-              <div className="flex gap-1 flex-wrap mt-1">
-                {selectedClass.armor_proficiencies.map((armor) => (
-                  <Badge key={armor} variant="outline" className="text-xs">
-                    <Shield className="h-3 w-3 mr-1" />
-                    {armor}
-                  </Badge>
-                ))}
+            
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Кость хитов:</span>
+                <p className="font-medium">к{selectedClass.hit_die}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Основная:</span>
+                <p className="font-medium">{selectedClass.primary_ability || "—"}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Спасброски:</span>
+                <p className="font-medium">{selectedClass.saving_throws?.join(", ") || "—"}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">HP:</span>
+                <p className="font-medium">{character.max_hp}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Мастерство:</span>
+                <p className="font-medium">+{character.proficiency_bonus}</p>
               </div>
             </div>
-          )}
 
-          {selectedClass.weapon_proficiencies && selectedClass.weapon_proficiencies.length > 0 && (
-            <div>
-              <span className="text-sm text-muted-foreground">Владение оружием:</span>
-              <div className="flex gap-1 flex-wrap mt-1">
-                {selectedClass.weapon_proficiencies.map((weapon) => (
-                  <Badge key={weapon} variant="outline" className="text-xs">
-                    <Sword className="h-3 w-3 mr-1" />
-                    {weapon}
-                  </Badge>
-                ))}
+            {selectedClass.armor_proficiencies && selectedClass.armor_proficiencies.length > 0 && (
+              <div>
+                <span className="text-sm text-muted-foreground">Владение доспехами:</span>
+                <div className="flex gap-1 flex-wrap mt-1">
+                  {selectedClass.armor_proficiencies.map((armor) => (
+                    <Badge key={armor} variant="outline" className="text-xs">
+                      <Shield className="h-3 w-3 mr-1" />
+                      {armor}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {selectedClass.weapon_proficiencies && selectedClass.weapon_proficiencies.length > 0 && (
+              <div>
+                <span className="text-sm text-muted-foreground">Владение оружием:</span>
+                <div className="flex gap-1 flex-wrap mt-1">
+                  {selectedClass.weapon_proficiencies.map((weapon) => (
+                    <Badge key={weapon} variant="outline" className="text-xs">
+                      <Sword className="h-3 w-3 mr-1" />
+                      {weapon}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Subclass selector */}
+          <SubclassSelector
+            characterClass={selectedClass}
+            characterLevel={character.level}
+            selectedSubclass={selectedSubclass}
+            onSelect={handleSubclassSelect}
+          />
         </div>
       )}
     </div>

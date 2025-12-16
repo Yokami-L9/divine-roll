@@ -18,6 +18,7 @@ export interface CharacterData {
   class: string;
   classId: string;
   class_levels: Record<string, number>; // For multiclassing: { "Воин": 3, "Волшебник": 2 }
+  subclasses: Record<string, string>; // Selected subclass per class: { "Волшебник": "Школа Воплощения" }
   
   // Background
   background: string;
@@ -123,6 +124,7 @@ export function useCharacterCreator() {
     class: "",
     classId: "",
     class_levels: {},
+    subclasses: {},
     background: "",
     backgroundId: "",
     strength: 10,
