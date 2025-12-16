@@ -20,6 +20,7 @@ import { SpellDescriptionDialog } from "@/components/character-creator/SpellDesc
 import { InventoryGrid } from "@/components/character/InventoryGrid";
 import { CharacterJournal } from "@/components/character/CharacterJournal";
 import { LevelUpDialog } from "@/components/character/LevelUpDialog";
+import { ASIDialog } from "@/components/character/ASIDialog";
 
 // Dynamically import all spell icons
 const spellIconsContext = import.meta.glob('@/assets/spells/*.png', { eager: true, import: 'default' });
@@ -133,6 +134,8 @@ const CharacterView = () => {
   const [spellDialogOpen, setSpellDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [levelUpOpen, setLevelUpOpen] = useState(false);
+  const [asiOpen, setAsiOpen] = useState(false);
+  const [pendingASIClass, setPendingASIClass] = useState<string | null>(null);
 
   const abilities: AbilityKey[] = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
 
@@ -202,6 +205,18 @@ const CharacterView = () => {
       setSaving(false);
     }
   };
+  // ASI levels (PHB)
+  const ASI_LEVELS = [4, 8, 12, 16, 19];
+  
+  const isASILevel = (className: string, classLevel: number) => {
+    if (className === "Воин") {
+      return ASI_LEVELS.includes(classLevel) || classLevel === 6 || classLevel === 14;
+    }
+    if (className === "Плут") {
+      return ASI_LEVELS.includes(classLevel) || classLevel === 10;
+    }
+    return ASI_LEVELS.includes(classLevel);
+  };
 
   const handleLevelUp = async (
     selectedClass: string, 
@@ -216,6 +231,7 @@ const CharacterView = () => {
     try {
       const newLevel = character.level + 1;
       const newProficiencyBonus = Math.floor((newLevel - 1) / 4) + 2;
+      const newClassLevel = newClassLevels[selectedClass] || 1;
       
       const { error } = await supabase
         .from("characters")
@@ -243,11 +259,74 @@ const CharacterView = () => {
       
       const subclassMsg = selectedSubclass ? ` Выбран архетип: ${selectedSubclass}` : '';
       toast.success(`Уровень повышен до ${newLevel}! +${hpIncrease} HP${subclassMsg}`);
+      
+      // Check if ASI is available at this level
+      if (isASILevel(selectedClass, newClassLevel)) {
+        setPendingASIClass(selectedClass);
+        setAsiOpen(true);
+      }
     } catch (error) {
       console.error("Error leveling up:", error);
       toast.error("Не удалось повысить уровень");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleASIConfirm = async (
+    abilityChanges: Record<string, number>,
+    selectedFeat: string | null
+  ) => {
+    if (!character || !id) return;
+
+    setSaving(true);
+    try {
+      const updates: Record<string, unknown> = {};
+      
+      // Apply ability changes
+      if (Object.keys(abilityChanges).length > 0) {
+        for (const [ability, change] of Object.entries(abilityChanges)) {
+          if (change > 0) {
+            const currentValue = character[ability as keyof CharacterData] as number;
+            updates[ability] = Math.min(currentValue + change, 20);
+          }
+        }
+      }
+      
+      // Apply feat (store in traits)
+      if (selectedFeat) {
+        updates.traits = [...(character.traits || []), `Черта: ${selectedFeat}`];
+      }
+
+      if (Object.keys(updates).length > 0) {
+        const { error } = await supabase
+          .from("characters")
+          .update(updates)
+          .eq("id", id);
+
+        if (error) throw error;
+
+        setCharacter({
+          ...character,
+          ...updates as Partial<CharacterData>,
+        });
+
+        if (selectedFeat) {
+          toast.success(`Получена черта: ${selectedFeat}`);
+        } else {
+          const changes = Object.entries(abilityChanges)
+            .filter(([_, v]) => v > 0)
+            .map(([k, v]) => `${ABILITY_NAMES[k]} +${v}`)
+            .join(", ");
+          toast.success(`Характеристики улучшены: ${changes}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error applying ASI:", error);
+      toast.error("Не удалось применить улучшения");
+    } finally {
+      setSaving(false);
+      setPendingASIClass(null);
     }
   };
 
@@ -332,8 +411,28 @@ const CharacterView = () => {
                   <div className="flex-1">
                     <h1 className="text-2xl font-bold">{character.name}</h1>
                     <p className="text-lg text-muted-foreground">
-                      {character.race} {character.subrace ? `(${character.subrace})` : ""} • {character.class}
+                      {character.race} {character.subrace ? `(${character.subrace})` : ""}
                     </p>
+                    {/* Multiclass display */}
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {character.class_levels && Object.keys(character.class_levels).length > 0 ? (
+                        Object.entries(character.class_levels)
+                          .filter(([_, lvl]) => lvl > 0)
+                          .map(([className, lvl]) => {
+                            const subclass = character.subclasses?.[className];
+                            return (
+                              <Badge key={className} variant="secondary" className="text-xs">
+                                {className} {lvl}
+                                {subclass && <span className="ml-1 opacity-70">({subclass})</span>}
+                              </Badge>
+                            );
+                          })
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">
+                          {character.class} {character.level}
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex gap-2 mt-2 flex-wrap items-center">
                       <Badge>Уровень {character.level}</Badge>
                       {character.level < 20 && (
@@ -682,6 +781,21 @@ const CharacterView = () => {
           }}
           characterSubclasses={character.subclasses || {}}
           onLevelUp={handleLevelUp}
+        />
+
+        {/* ASI Dialog */}
+        <ASIDialog
+          open={asiOpen}
+          onOpenChange={setAsiOpen}
+          currentAbilities={{
+            strength: character.strength,
+            dexterity: character.dexterity,
+            constitution: character.constitution,
+            intelligence: character.intelligence,
+            wisdom: character.wisdom,
+            charisma: character.charisma,
+          }}
+          onConfirm={handleASIConfirm}
         />
       </main>
     </div>
