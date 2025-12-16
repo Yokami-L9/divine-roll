@@ -140,6 +140,7 @@ export type Database = {
           skill_proficiencies: string[] | null
           speed: number | null
           strength: number
+          subclasses: Json | null
           subrace: string | null
           traits: string[] | null
           updated_at: string
@@ -179,6 +180,7 @@ export type Database = {
           skill_proficiencies?: string[] | null
           speed?: number | null
           strength?: number
+          subclasses?: Json | null
           subrace?: string | null
           traits?: string[] | null
           updated_at?: string
@@ -218,6 +220,7 @@ export type Database = {
           skill_proficiencies?: string[] | null
           speed?: number | null
           strength?: number
+          subclasses?: Json | null
           subrace?: string | null
           traits?: string[] | null
           updated_at?: string
