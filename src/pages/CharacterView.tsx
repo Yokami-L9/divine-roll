@@ -21,6 +21,7 @@ import { InventoryGrid } from "@/components/character/InventoryGrid";
 import { CharacterJournal } from "@/components/character/CharacterJournal";
 import { LevelUpDialog } from "@/components/character/LevelUpDialog";
 import { ASIDialog } from "@/components/character/ASIDialog";
+import { ClassFeaturesTab } from "@/components/character/ClassFeaturesTab";
 
 // Dynamically import all spell icons
 const spellIconsContext = import.meta.glob('@/assets/spells/*.png', { eager: true, import: 'default' });
@@ -489,8 +490,9 @@ const CharacterView = () => {
             </div>
 
             <Tabs defaultValue="abilities" className="space-y-4">
-              <TabsList className="bg-card border w-full justify-start">
+              <TabsList className="bg-card border w-full justify-start flex-wrap">
                 <TabsTrigger value="abilities">Характеристики</TabsTrigger>
+                <TabsTrigger value="features">Способности</TabsTrigger>
                 <TabsTrigger value="spells">Заклинания</TabsTrigger>
                 <TabsTrigger value="inventory">Инвентарь</TabsTrigger>
                 <TabsTrigger value="journal">Дневник</TabsTrigger>
@@ -636,6 +638,15 @@ const CharacterView = () => {
                     </Card>
                   )}
                 </div>
+              </TabsContent>
+
+              <TabsContent value="features">
+                <ClassFeaturesTab
+                  characterClass={character.class}
+                  classLevels={character.class_levels || { [character.class]: character.level }}
+                  subclasses={character.subclasses || {}}
+                  characterId={character.id}
+                />
               </TabsContent>
 
               <TabsContent value="spells">
