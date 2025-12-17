@@ -22,6 +22,7 @@ import { CharacterJournal } from "@/components/character/CharacterJournal";
 import { LevelUpDialog } from "@/components/character/LevelUpDialog";
 import { ASIDialog } from "@/components/character/ASIDialog";
 import { ClassFeaturesTab } from "@/components/character/ClassFeaturesTab";
+import { SpellSlotsTracker } from "@/components/character/SpellSlotsTracker";
 
 // Dynamically import all spell icons
 const spellIconsContext = import.meta.glob('@/assets/spells/*.png', { eager: true, import: 'default' });
@@ -650,13 +651,20 @@ const CharacterView = () => {
               </TabsContent>
 
               <TabsContent value="spells">
+                {/* Spell Slots Tracker */}
+                <SpellSlotsTracker
+                  characterClass={character.class}
+                  classLevels={character.class_levels || { [character.class]: character.level }}
+                  subclasses={character.subclasses || {}}
+                />
+
                 {!character.known_spells || character.known_spells.length === 0 ? (
-                  <Card className="p-8 text-center">
+                  <Card className="p-8 text-center mt-4">
                     <Sparkles className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                     <p className="text-muted-foreground">Нет известных заклинаний</p>
                   </Card>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
                     {character.known_spells.map((spellId) => {
                       const spell = getSpell(spellId);
                       if (!spell) return null;
