@@ -225,7 +225,8 @@ const CharacterView = () => {
     newClassLevels: Record<string, number>, 
     hpIncrease: number,
     selectedSubclass: string | null,
-    newSubclasses: Record<string, string>
+    newSubclasses: Record<string, string>,
+    newSpells: string[]
   ) => {
     if (!character || !id) return;
 
@@ -244,6 +245,7 @@ const CharacterView = () => {
           hp: character.hp + hpIncrease,
           max_hp: character.max_hp + hpIncrease,
           proficiency_bonus: newProficiencyBonus,
+          known_spells: newSpells,
         })
         .eq("id", id);
 
@@ -257,6 +259,7 @@ const CharacterView = () => {
         hp: character.hp + hpIncrease,
         max_hp: character.max_hp + hpIncrease,
         proficiency_bonus: newProficiencyBonus,
+        known_spells: newSpells,
       });
       
       const subclassMsg = selectedSubclass ? ` Выбран архетип: ${selectedSubclass}` : '';
@@ -799,6 +802,7 @@ const CharacterView = () => {
             charisma: character.charisma,
           }}
           characterSubclasses={character.subclasses || {}}
+          knownSpells={character.known_spells || []}
           onLevelUp={handleLevelUp}
         />
 

@@ -15,6 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Heart, Loader2, Sword, Wand2, Check, AlertTriangle, Sparkles, Star, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LevelUpHPSection } from "./LevelUpHPSection";
+import { LevelUpSpellSelection } from "./LevelUpSpellSelection";
 
 // PHB Multiclass Requirements
 const MULTICLASS_REQUIREMENTS: Record<string, { ability: string; minScore: number }[]> = {
@@ -86,12 +88,14 @@ interface LevelUpDialogProps {
     charisma: number;
   };
   characterSubclasses: Record<string, string>;
+  knownSpells: string[];
   onLevelUp: (
     selectedClass: string, 
     newClassLevels: Record<string, number>, 
     hpIncrease: number,
     selectedSubclass: string | null,
-    newSubclasses: Record<string, string>
+    newSubclasses: Record<string, string>,
+    newSpells: string[]
   ) => void;
 }
 
@@ -104,6 +108,7 @@ export function LevelUpDialog({
   primaryClass,
   abilities,
   characterSubclasses,
+  knownSpells,
   onLevelUp,
 }: LevelUpDialogProps) {
   const { data: classes, isLoading } = useClasses();
@@ -111,6 +116,8 @@ export function LevelUpDialog({
   const [selectedSubclass, setSelectedSubclass] = useState<string | null>(null);
   const [tab, setTab] = useState<"current" | "new">("current");
   const [step, setStep] = useState<"class" | "features">("class");
+  const [selectedHP, setSelectedHP] = useState<number | null>(null);
+  const [newSpells, setNewSpells] = useState<string[]>([]);
 
   const maxLevel = 20;
   const canLevelUp = currentLevel < maxLevel;
@@ -125,8 +132,10 @@ export function LevelUpDialog({
       setSelectedSubclass(null);
       setTab("current");
       setStep("class");
+      setSelectedHP(null);
+      setNewSpells([...knownSpells]);
     }
-  }, [open]);
+  }, [open, knownSpells]);
 
   // Check if character meets multiclass requirements
   const meetsRequirements = (className: string) => {
@@ -222,7 +231,7 @@ export function LevelUpDialog({
   };
 
   const handleLevelUp = () => {
-    if (!selectedClass) return;
+    if (!selectedClass || selectedHP === null || selectedHP <= 0) return;
 
     const cls = classes?.find(c => c.name === selectedClass);
     if (!cls) return;
@@ -231,10 +240,6 @@ export function LevelUpDialog({
     if (needsSubclassSelection(selectedClass) && !selectedSubclass) {
       return;
     }
-
-    // Calculate HP increase
-    const conMod = Math.floor((abilities.constitution - 10) / 2);
-    const hpIncrease = Math.floor(cls.hit_die / 2) + 1 + conMod;
 
     const newClassLevels = {
       ...classLevels,
@@ -245,14 +250,17 @@ export function LevelUpDialog({
       ? { ...characterSubclasses, [selectedClass]: selectedSubclass }
       : characterSubclasses;
 
-    onLevelUp(selectedClass, newClassLevels, hpIncrease, selectedSubclass, newSubclasses);
+    onLevelUp(selectedClass, newClassLevels, selectedHP, selectedSubclass, newSubclasses, newSpells);
     setSelectedClass(null);
     setSelectedSubclass(null);
+    setSelectedHP(null);
     setStep("class");
     onOpenChange(false);
   };
 
   const selectedClassDetails = selectedClass ? getClassDetails(selectedClass) : null;
+  const constitutionMod = Math.floor((abilities.constitution - 10) / 2);
+  const hasSpellcasting = selectedClassDetails?.spellcasting !== null;
   const newClassLevel = selectedClass ? getNewClassLevel(selectedClass) : 0;
   const classFeatures = selectedClass ? getFeaturesForLevel(selectedClass) : [];
   const subclassFeatures = selectedClass ? getSubclassFeaturesForLevel(selectedClass) : [];
@@ -420,18 +428,26 @@ export function LevelUpDialog({
                 </div>
               </div>
 
-              {/* HP Increase */}
-              <Card>
-                <CardContent className="p-4 flex items-center gap-3">
-                  <Heart className="h-5 w-5 text-red-500" />
-                  <div>
-                    <p className="font-medium">Увеличение хитов</p>
-                    <p className="text-sm text-muted-foreground">
-                      +{selectedClassDetails ? Math.floor(selectedClassDetails.hit_die / 2) + 1 : 0} + модификатор Телосложения
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* HP Increase with options */}
+              {selectedClassDetails && (
+                <LevelUpHPSection
+                  hitDie={selectedClassDetails.hit_die}
+                  constitutionMod={constitutionMod}
+                  onHPChange={setSelectedHP}
+                  selectedHP={selectedHP}
+                />
+              )}
+
+              {/* Spell Selection for spellcasters */}
+              {hasSpellcasting && selectedClass && (
+                <LevelUpSpellSelection
+                  className={selectedClass}
+                  classLevel={newClassLevel}
+                  subclass={selectedSubclass || characterSubclasses[selectedClass]}
+                  currentSpells={newSpells}
+                  onSpellsChange={setNewSpells}
+                />
+              )}
 
               {/* Subclass Selection */}
               {showSubclassSelection && selectedClassDetails?.subclasses && (
@@ -546,7 +562,7 @@ export function LevelUpDialog({
           {step === "features" && (
             <Button 
               onClick={handleLevelUp} 
-              disabled={showSubclassSelection && !selectedSubclass}
+              disabled={(showSubclassSelection && !selectedSubclass) || !selectedHP || selectedHP <= 0}
             >
               Повысить уровень
             </Button>
