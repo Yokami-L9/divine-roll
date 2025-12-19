@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
 import { cn } from "@/lib/utils";
 import { SpellDescriptionDialog } from "@/components/character-creator/SpellDescriptionDialog";
-import { InventoryGrid } from "@/components/character/InventoryGrid";
+import { EnhancedInventoryGrid, InventoryItem } from "@/components/character/EnhancedInventoryGrid";
 import { CharacterJournal } from "@/components/character/CharacterJournal";
 import { LevelUpDialog } from "@/components/character/LevelUpDialog";
 import { ASIDialog } from "@/components/character/ASIDialog";
@@ -81,7 +81,7 @@ interface CharacterData {
   skill_proficiencies: string[] | null;
   saving_throw_proficiencies: string[] | null;
   languages: string[] | null;
-  equipment: string[] | null;
+  equipment: InventoryItem[] | null;
   traits: string[] | null;
   known_spells: string[] | null;
   prepared_spells: string[] | null;
@@ -165,7 +165,8 @@ const CharacterView = () => {
       setCharacter({
         ...data,
         class_levels: (data.class_levels as Record<string, number>) || { [data.class]: data.level },
-        subclasses: (data.subclasses as Record<string, string>) || {}
+        subclasses: (data.subclasses as Record<string, string>) || {},
+        equipment: (data.equipment as unknown as InventoryItem[]) || []
       });
     } catch (error) {
       console.error("Error fetching character:", error);
@@ -187,14 +188,14 @@ const CharacterView = () => {
     setSpellDialogOpen(true);
   };
 
-  const handleUpdateEquipment = async (newEquipment: string[]) => {
+  const handleUpdateEquipment = async (newEquipment: InventoryItem[]) => {
     if (!character || !id) return;
 
     setSaving(true);
     try {
       const { error } = await supabase
         .from("characters")
-        .update({ equipment: newEquipment })
+        .update({ equipment: JSON.parse(JSON.stringify(newEquipment)) })
         .eq("id", id);
 
       if (error) throw error;
@@ -717,21 +718,13 @@ const CharacterView = () => {
               </TabsContent>
 
               <TabsContent value="inventory">
-                <Card className="p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Package className="h-5 w-5 text-primary" />
-                      Инвентарь
-                    </h3>
-                    {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                  </div>
-                  <InventoryGrid 
-                    items={character.equipment || []}
-                    onUpdate={handleUpdateEquipment}
-                    columns={6}
-                    rows={5}
-                  />
-                </Card>
+                <EnhancedInventoryGrid 
+                  items={(character.equipment || []) as InventoryItem[]}
+                  onUpdate={handleUpdateEquipment}
+                  columns={6}
+                  rows={5}
+                  strength={character.strength}
+                />
               </TabsContent>
 
               <TabsContent value="journal">

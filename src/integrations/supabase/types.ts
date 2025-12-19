@@ -120,7 +120,7 @@ export type Database = {
           constitution: number
           created_at: string
           dexterity: number
-          equipment: string[] | null
+          equipment: Json | null
           flaw: string | null
           hp: number
           id: string
@@ -160,7 +160,7 @@ export type Database = {
           constitution?: number
           created_at?: string
           dexterity?: number
-          equipment?: string[] | null
+          equipment?: Json | null
           flaw?: string | null
           hp?: number
           id?: string
@@ -200,7 +200,7 @@ export type Database = {
           constitution?: number
           created_at?: string
           dexterity?: number
-          equipment?: string[] | null
+          equipment?: Json | null
           flaw?: string | null
           hp?: number
           id?: string

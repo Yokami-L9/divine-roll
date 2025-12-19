@@ -177,8 +177,8 @@ export function FigureGenerator({ character, updateCharacter }: FigureGeneratorP
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Снаряжение:</span>
                         <span className="font-medium text-right max-w-48 truncate">
-                          {character.equipment.filter(e => e !== "__NO_EQUIPMENT__").length > 0 
-                            ? character.equipment.filter(e => e !== "__NO_EQUIPMENT__").slice(0, 3).join(", ")
+                          {character.equipment.filter(e => e.name !== "__NO_EQUIPMENT__").length > 0 
+                            ? character.equipment.filter(e => e.name !== "__NO_EQUIPMENT__").slice(0, 3).map(e => e.name).join(", ")
                             : "Не выбрано"}
                         </span>
                       </div>

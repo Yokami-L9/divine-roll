@@ -90,10 +90,10 @@ export function CharacterCreator() {
   // Check if equipment is selected
   const isEquipmentValid = () => {
     // User explicitly chose "no equipment"
-    if (character.equipment.includes("__NO_EQUIPMENT__")) return true;
+    if (character.equipment.some(e => e.name === "__NO_EQUIPMENT__")) return true;
     
     // Check if equipment array has valid items (not just background items)
-    const validEquipment = character.equipment.filter(e => e !== "__NO_EQUIPMENT__");
+    const validEquipment = character.equipment.filter(e => e.name !== "__NO_EQUIPMENT__");
     return validEquipment.length > 0;
   };
 
@@ -146,7 +146,7 @@ export function CharacterCreator() {
         skill_proficiencies: character.skill_proficiencies,
         saving_throw_proficiencies: character.saving_throw_proficiencies,
         languages: character.languages,
-        equipment: character.equipment.filter(e => e !== "__NO_EQUIPMENT__"),
+        equipment: JSON.parse(JSON.stringify(character.equipment.filter(e => e.name !== "__NO_EQUIPMENT__"))),
         traits: character.traits,
         known_spells: character.known_spells,
         personality_trait: character.personality_trait,

@@ -295,8 +295,12 @@ const CharacterGenerator = () => {
         name = `Герой ${Math.floor(Math.random() * 1000)}`;
       }
 
-      // Background equipment
-      const bgEquipment = randomBackground.equipment || [];
+      // Background equipment - convert to InventoryItem format
+      const bgEquipment = (randomBackground.equipment || []).map((name: string) => ({ 
+        name, 
+        quantity: 1, 
+        weight: 0 
+      }));
 
       // Update character with all random values
       setCharacter({
@@ -403,7 +407,7 @@ const CharacterGenerator = () => {
         skill_proficiencies: character.skill_proficiencies,
         saving_throw_proficiencies: character.saving_throw_proficiencies,
         languages: character.languages,
-        equipment: character.equipment,
+        equipment: JSON.parse(JSON.stringify(character.equipment)),
         traits: character.traits,
         known_spells: character.known_spells,
         personality_trait: character.personality_trait,
