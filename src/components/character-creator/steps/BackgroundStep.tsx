@@ -1,5 +1,6 @@
 import { useBackgrounds } from "@/hooks/useRulebook";
 import { CharacterData, ALIGNMENTS } from "@/hooks/useCharacterCreator";
+import { InventoryItem } from "@/types/inventory";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,7 +29,10 @@ export function BackgroundStep({ character, updateCharacter }: BackgroundStepPro
       background: bg.name,
       backgroundId: bg.id,
       skill_proficiencies: newSkills,
-      equipment: [...character.equipment, ...(bg.equipment || [])],
+      equipment: [
+        ...character.equipment, 
+        ...(bg.equipment || []).map((name: string): InventoryItem => ({ name, quantity: 1, weight: 0 }))
+      ],
     });
 
     // Auto-fill personality if not set

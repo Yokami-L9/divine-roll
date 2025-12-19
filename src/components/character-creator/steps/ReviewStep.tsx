@@ -428,7 +428,7 @@ export function ReviewStep({ character, getModifier, updateCharacter }: ReviewSt
           />
 
           {/* Equipment */}
-          {character.equipment.filter(e => e !== "__NO_EQUIPMENT__").length > 0 && (
+          {character.equipment.filter(e => e.name !== "__NO_EQUIPMENT__").length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -439,10 +439,10 @@ export function ReviewStep({ character, getModifier, updateCharacter }: ReviewSt
               <CardContent>
                 <div className="flex gap-1 flex-wrap">
                   {character.equipment
-                    .filter(e => e !== "__NO_EQUIPMENT__")
+                    .filter(e => e.name !== "__NO_EQUIPMENT__")
                     .map((item, i) => (
                       <Badge key={i} variant="secondary" className="text-xs">
-                        {item}
+                        {item.name}{item.quantity > 1 ? ` (×${item.quantity})` : ''}
                       </Badge>
                     ))}
                 </div>

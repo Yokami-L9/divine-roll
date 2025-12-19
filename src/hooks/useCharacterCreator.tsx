@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Race, CharacterClass } from "./useRulebook";
+import { InventoryItem } from "@/types/inventory";
 
 export interface CharacterData {
   // Basic info
@@ -48,7 +49,7 @@ export interface CharacterData {
   languages: string[];
   
   // Equipment & traits
-  equipment: string[];
+  equipment: InventoryItem[];
   traits: string[];
   
   // Spells (for spellcasters)

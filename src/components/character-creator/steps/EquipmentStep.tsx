@@ -1,4 +1,5 @@
 import { CharacterData } from "@/hooks/useCharacterCreator";
+import { InventoryItem } from "@/types/inventory";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Backpack, Sword, Shield, Wand2, AlertCircle } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+
+// Helper to convert string array to InventoryItem array
+const toInventoryItems = (items: string[]): InventoryItem[] => 
+  items.map(name => ({ name, quantity: 1, weight: 0 }));
+
+// Helper to check if item name exists in equipment
+const hasItem = (equipment: InventoryItem[], name: string): boolean =>
+  equipment.some(e => e.name === name);
+
+// Helper to get item names from equipment
+const getItemNames = (equipment: InventoryItem[]): string[] =>
+  equipment.map(e => e.name);
 
 interface EquipmentStepProps {
   character: CharacterData;
@@ -304,7 +317,7 @@ const DEFAULT_EQUIPMENT: Record<string, string[]> = {
 
 export function EquipmentStep({ character, updateCharacter }: EquipmentStepProps) {
   const [skipEquipment, setSkipEquipment] = useState(
-    character.equipment.includes("__NO_EQUIPMENT__")
+    hasItem(character.equipment, "__NO_EQUIPMENT__")
   );
   const [selectedChoices, setSelectedChoices] = useState<Record<number, string>>({});
 
@@ -353,14 +366,15 @@ export function EquipmentStep({ character, updateCharacter }: EquipmentStepProps
     }
     
     // Merge with background equipment
+    const itemNames = getItemNames(character.equipment);
     const bgEquipment = character.equipment.filter(e => 
-      !defaultItems.includes(e) && 
+      !defaultItems.includes(e.name) && 
       !Object.values(CLASS_EQUIPMENT[character.class]?.choices || {}).some(choice => 
-        (choice as { options: EquipmentSet[] }).options.some(opt => opt.items.includes(e))
+        (choice as { options: EquipmentSet[] }).options.some(opt => opt.items.includes(e.name))
       )
     );
     
-    updateCharacter({ equipment: [...bgEquipment, ...items] });
+    updateCharacter({ equipment: [...bgEquipment, ...toInventoryItems(items)] });
   };
 
   const handleSkipToggle = (skip: boolean) => {
@@ -368,11 +382,11 @@ export function EquipmentStep({ character, updateCharacter }: EquipmentStepProps
     
     if (skip) {
       // Mark as explicitly skipped with special marker
-      updateCharacter({ equipment: ["__NO_EQUIPMENT__"] });
+      updateCharacter({ equipment: [{ name: "__NO_EQUIPMENT__", quantity: 1, weight: 0 }] });
     } else {
       // Restore with current selections
       setSelectedChoices({});
-      updateCharacter({ equipment: [...defaultItems] });
+      updateCharacter({ equipment: toInventoryItems(defaultItems) });
     }
   };
 
@@ -520,15 +534,15 @@ export function EquipmentStep({ character, updateCharacter }: EquipmentStepProps
               </div>
 
               {/* Background equipment */}
-              {character.equipment.filter(e => !selectedEquipment.includes(e) && !defaultItems.includes(e)).length > 0 && (
+              {character.equipment.filter(e => !selectedEquipment.includes(e.name) && !defaultItems.includes(e.name)).length > 0 && (
                 <div className="mt-4 pt-4 border-t">
                   <h4 className="text-xs text-muted-foreground mb-2">От предыстории:</h4>
                   <div className="flex gap-1 flex-wrap">
                     {character.equipment
-                      .filter(e => !selectedEquipment.includes(e) && !defaultItems.includes(e))
+                      .filter(e => !selectedEquipment.includes(e.name) && !defaultItems.includes(e.name))
                       .map((item, i) => (
                         <Badge key={i} variant="outline" className="text-xs">
-                          {item}
+                          {item.name}
                         </Badge>
                       ))}
                   </div>
