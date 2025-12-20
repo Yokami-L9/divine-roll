@@ -21,8 +21,8 @@ import { EnhancedInventoryGrid, InventoryItem } from "@/components/character/Enh
 import { CharacterJournal } from "@/components/character/CharacterJournal";
 import { LevelUpDialog } from "@/components/character/LevelUpDialog";
 import { ASIDialog } from "@/components/character/ASIDialog";
-import { ClassFeaturesTab } from "@/components/character/ClassFeaturesTab";
-import { SpellSlotsTracker } from "@/components/character/SpellSlotsTracker";
+import { ClassFeaturesTab, ClassResource } from "@/components/character/ClassFeaturesTab";
+import { SpellSlotsTracker, SpellSlotState } from "@/components/character/SpellSlotsTracker";
 
 // Dynamically import all spell icons
 const spellIconsContext = import.meta.glob('@/assets/spells/*.png', { eager: true, import: 'default' });
@@ -91,6 +91,8 @@ interface CharacterData {
   flaw: string | null;
   backstory: string | null;
   avatar_url: string | null;
+  spell_slots: SpellSlotState | null;
+  class_resources: Record<string, ClassResource[]> | null;
 }
 
 const ABILITY_NAMES: Record<string, string> = {
@@ -166,7 +168,9 @@ const CharacterView = () => {
         ...data,
         class_levels: (data.class_levels as Record<string, number>) || { [data.class]: data.level },
         subclasses: (data.subclasses as Record<string, string>) || {},
-        equipment: (data.equipment as unknown as InventoryItem[]) || []
+        equipment: (data.equipment as unknown as InventoryItem[]) || [],
+        spell_slots: (data.spell_slots as unknown as SpellSlotState) || null,
+        class_resources: (data.class_resources as unknown as Record<string, ClassResource[]>) || null
       });
     } catch (error) {
       console.error("Error fetching character:", error);
@@ -206,6 +210,38 @@ const CharacterView = () => {
       toast.error("Не удалось обновить инвентарь");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSpellSlotsChange = async (newState: SpellSlotState) => {
+    if (!character || !id) return;
+
+    try {
+      const { error } = await supabase
+        .from("characters")
+        .update({ spell_slots: JSON.parse(JSON.stringify(newState)) })
+        .eq("id", id);
+
+      if (error) throw error;
+      setCharacter({ ...character, spell_slots: newState });
+    } catch (error) {
+      console.error("Error updating spell slots:", error);
+    }
+  };
+
+  const handleClassResourcesChange = async (newResources: Record<string, ClassResource[]>) => {
+    if (!character || !id) return;
+
+    try {
+      const { error } = await supabase
+        .from("characters")
+        .update({ class_resources: JSON.parse(JSON.stringify(newResources)) })
+        .eq("id", id);
+
+      if (error) throw error;
+      setCharacter({ ...character, class_resources: newResources });
+    } catch (error) {
+      console.error("Error updating class resources:", error);
     }
   };
   // ASI levels (PHB)
@@ -651,6 +687,8 @@ const CharacterView = () => {
                   classLevels={character.class_levels || { [character.class]: character.level }}
                   subclasses={character.subclasses || {}}
                   characterId={character.id}
+                  initialResources={character.class_resources || undefined}
+                  onResourceChange={handleClassResourcesChange}
                 />
               </TabsContent>
 
@@ -660,6 +698,8 @@ const CharacterView = () => {
                   characterClass={character.class}
                   classLevels={character.class_levels || { [character.class]: character.level }}
                   subclasses={character.subclasses || {}}
+                  initialState={character.spell_slots || undefined}
+                  onChange={handleSpellSlotsChange}
                 />
 
                 {!character.known_spells || character.known_spells.length === 0 ? (

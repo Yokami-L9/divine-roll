@@ -117,6 +117,7 @@ export type Database = {
           charisma: number
           class: string
           class_levels: Json | null
+          class_resources: Json | null
           constitution: number
           created_at: string
           dexterity: number
@@ -139,6 +140,7 @@ export type Database = {
           saving_throw_proficiencies: string[] | null
           skill_proficiencies: string[] | null
           speed: number | null
+          spell_slots: Json | null
           strength: number
           subclasses: Json | null
           subrace: string | null
@@ -157,6 +159,7 @@ export type Database = {
           charisma?: number
           class: string
           class_levels?: Json | null
+          class_resources?: Json | null
           constitution?: number
           created_at?: string
           dexterity?: number
@@ -179,6 +182,7 @@ export type Database = {
           saving_throw_proficiencies?: string[] | null
           skill_proficiencies?: string[] | null
           speed?: number | null
+          spell_slots?: Json | null
           strength?: number
           subclasses?: Json | null
           subrace?: string | null
@@ -197,6 +201,7 @@ export type Database = {
           charisma?: number
           class?: string
           class_levels?: Json | null
+          class_resources?: Json | null
           constitution?: number
           created_at?: string
           dexterity?: number
@@ -219,6 +224,7 @@ export type Database = {
           saving_throw_proficiencies?: string[] | null
           skill_proficiencies?: string[] | null
           speed?: number | null
+          spell_slots?: Json | null
           strength?: number
           subclasses?: Json | null
           subrace?: string | null
