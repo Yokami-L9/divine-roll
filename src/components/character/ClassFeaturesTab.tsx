@@ -31,7 +31,7 @@ interface Subclass {
   features?: SubclassFeature[];
 }
 
-interface ClassResource {
+export interface ClassResource {
   name: string;
   max: number;
   current: number;
@@ -121,11 +121,12 @@ const CLASS_RESOURCES: Record<string, (level: number) => ClassResource[]> = {
   "Колдун": (level) => [],
 };
 
-interface ClassFeaturesTabProps {
+export interface ClassFeaturesTabProps {
   characterClass: string;
   classLevels: Record<string, number>;
   subclasses: Record<string, string>;
   characterId: string;
+  initialResources?: Record<string, ClassResource[]>;
   onResourceChange?: (resources: Record<string, ClassResource[]>) => void;
 }
 
@@ -134,24 +135,37 @@ export function ClassFeaturesTab({
   classLevels, 
   subclasses,
   characterId,
+  initialResources,
   onResourceChange 
 }: ClassFeaturesTabProps) {
   const { data: classes } = useClasses();
   const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
   const [resources, setResources] = useState<Record<string, ClassResource[]>>({});
+  const [initialized, setInitialized] = useState(false);
 
-  // Initialize resources based on classes
+  // Initialize resources based on classes or from saved state
   useEffect(() => {
-    const newResources: Record<string, ClassResource[]> = {};
-    
-    Object.entries(classLevels).forEach(([className, level]) => {
-      if (level > 0 && CLASS_RESOURCES[className]) {
-        newResources[className] = CLASS_RESOURCES[className](level);
-      }
-    });
-    
-    setResources(newResources);
-  }, [classLevels]);
+    // If we have initial resources from DB, use them
+    if (initialResources && Object.keys(initialResources).length > 0 && !initialized) {
+      setResources(initialResources);
+      setInitialized(true);
+      return;
+    }
+
+    // Otherwise calculate from class levels
+    if (!initialized) {
+      const newResources: Record<string, ClassResource[]> = {};
+      
+      Object.entries(classLevels).forEach(([className, level]) => {
+        if (level > 0 && CLASS_RESOURCES[className]) {
+          newResources[className] = CLASS_RESOURCES[className](level);
+        }
+      });
+      
+      setResources(newResources);
+      setInitialized(true);
+    }
+  }, [classLevels, initialResources, initialized]);
 
   const toggleFeature = (featureId: string) => {
     setExpandedFeatures(prev => {
