@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Canvas as FabricCanvas, Circle, Rect, FabricText, PencilBrush, FabricObject } from 'fabric';
+import { Canvas as FabricCanvas, Circle, FabricText, PencilBrush, IText, Group } from 'fabric';
 import type { ToolType, TerrainType, MarkerType, MapState } from './types';
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from './types';
+import { toast } from 'sonner';
 
 interface UseMapCanvasOptions {
   width: number;
@@ -14,7 +15,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<FabricCanvas | null>(null);
   const [isReady, setIsReady] = useState(false);
-  const [activeTool, setActiveTool] = useState<ToolType>('select');
+  const [activeTool, setActiveTool] = useState<ToolType>('brush');
   const [activeTerrain, setActiveTerrain] = useState<TerrainType>('grass');
   const [activeMarker, setActiveMarker] = useState<MarkerType>('city');
   const [brushSize, setBrushSize] = useState(30);
@@ -26,6 +27,8 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
   const isLoadingRef = useRef(false);
+  const isPanningRef = useRef(false);
+  const lastPosRef = useRef({ x: 0, y: 0 });
 
   // Initialize canvas
   useEffect(() => {
@@ -50,13 +53,15 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     // Load initial data if provided
     if (initialData && typeof initialData === 'object' && 'canvasData' in initialData) {
       const mapState = initialData as MapState;
-      if (mapState.canvasData) {
+      if (mapState.canvasData && Object.keys(mapState.canvasData).length > 0) {
         isLoadingRef.current = true;
         canvas.loadFromJSON(mapState.canvasData).then(() => {
           canvas.renderAll();
           isLoadingRef.current = false;
           saveToHistory();
         });
+      } else {
+        saveToHistory();
       }
     } else {
       saveToHistory();
@@ -71,6 +76,38 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     });
     canvas.on('object:removed', () => {
       if (!isLoadingRef.current) saveToHistory();
+    });
+
+    // Pan functionality
+    canvas.on('mouse:down', (opt) => {
+      if (activeTool === 'pan') {
+        isPanningRef.current = true;
+        canvas.selection = false;
+        const pointer = canvas.getPointer(opt.e);
+        lastPosRef.current = { x: pointer.x, y: pointer.y };
+        canvas.defaultCursor = 'grabbing';
+      }
+    });
+
+    canvas.on('mouse:move', (opt) => {
+      if (isPanningRef.current && activeTool === 'pan') {
+        const vpt = canvas.viewportTransform;
+        const pointer = canvas.getPointer(opt.e);
+        if (vpt) {
+          vpt[4] += (pointer.x - lastPosRef.current.x) * zoom;
+          vpt[5] += (pointer.y - lastPosRef.current.y) * zoom;
+          canvas.requestRenderAll();
+          lastPosRef.current = { x: pointer.x, y: pointer.y };
+        }
+      }
+    });
+
+    canvas.on('mouse:up', () => {
+      isPanningRef.current = false;
+      canvas.selection = activeTool === 'select';
+      if (activeTool === 'pan') {
+        canvas.defaultCursor = 'grab';
+      }
     });
 
     return () => {
@@ -156,23 +193,24 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     }
 
     // Update cursor
-    const wrapper = canvasRef.current?.parentElement;
-    if (wrapper) {
-      switch (activeTool) {
-        case 'pan':
-          wrapper.style.cursor = 'grab';
-          break;
-        case 'brush':
-        case 'eraser':
-          wrapper.style.cursor = 'crosshair';
-          break;
-        case 'marker':
-        case 'text':
-          wrapper.style.cursor = 'pointer';
-          break;
-        default:
-          wrapper.style.cursor = 'default';
-      }
+    switch (activeTool) {
+      case 'pan':
+        canvas.defaultCursor = 'grab';
+        canvas.hoverCursor = 'grab';
+        break;
+      case 'brush':
+      case 'eraser':
+        canvas.defaultCursor = 'crosshair';
+        canvas.hoverCursor = 'crosshair';
+        break;
+      case 'marker':
+      case 'text':
+        canvas.defaultCursor = 'pointer';
+        canvas.hoverCursor = 'pointer';
+        break;
+      default:
+        canvas.defaultCursor = 'default';
+        canvas.hoverCursor = 'move';
     }
   }, [activeTool, activeTerrain, brushSize]);
 
@@ -205,29 +243,36 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     const config = MARKER_CONFIGS.find(m => m.id === markerType);
     if (!config) return;
 
-    // Create marker group
+    // Create marker with circle background
     const circle = new Circle({
-      radius: 20,
+      radius: 18,
       fill: config.color,
       stroke: '#ffffff',
       strokeWidth: 2,
       originX: 'center',
       originY: 'center',
+      left: 0,
+      top: 0,
     });
 
     const text = new FabricText(config.icon, {
-      fontSize: 20,
+      fontSize: 18,
       originX: 'center',
       originY: 'center',
+      left: 0,
+      top: 0,
     });
 
-    // Position at click
-    const group = new FabricObject();
-    circle.set({ left: x, top: y });
-    text.set({ left: x, top: y });
+    // Create group
+    const group = new Group([circle, text], {
+      left: x - 18,
+      top: y - 18,
+      selectable: true,
+      hasControls: true,
+    });
 
-    canvas.add(circle);
-    canvas.add(text);
+    canvas.add(group);
+    canvas.setActiveObject(group);
     canvas.renderAll();
   }, [activeMarker]);
 
@@ -236,18 +281,19 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     const canvas = fabricRef.current;
     if (!canvas) return;
 
-    const text = new FabricText(label, {
+    const text = new IText(label, {
       left: x,
       top: y,
-      fontSize: 16,
+      fontSize: 18,
       fill: '#ffffff',
-      fontFamily: 'serif',
+      fontFamily: 'Georgia, serif',
       stroke: '#000000',
       strokeWidth: 0.5,
     });
 
     canvas.add(text);
     canvas.setActiveObject(text);
+    text.enterEditing();
     canvas.renderAll();
   }, []);
 
@@ -255,6 +301,10 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const canvas = fabricRef.current;
     if (!canvas) return;
+    
+    // Don't add markers/text if clicking on existing object
+    const target = canvas.findTarget(e.nativeEvent);
+    if (target) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX - rect.left) / zoom;
@@ -277,6 +327,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
       activeObjects.forEach(obj => canvas.remove(obj));
       canvas.discardActiveObject();
       canvas.renderAll();
+      toast.success('Объекты удалены');
     }
   }, []);
 
@@ -289,6 +340,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     canvas.backgroundColor = '#1a1a2e';
     canvas.renderAll();
     saveToHistory();
+    toast.success('Холст очищен');
   }, [saveToHistory]);
 
   // Export as image
