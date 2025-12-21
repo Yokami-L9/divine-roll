@@ -29,6 +29,42 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   const isLoadingRef = useRef(false);
   const isPanningRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
+  const activeToolRef = useRef(activeTool);
+  const zoomRef = useRef(zoom);
+
+  // Keep refs in sync
+  useEffect(() => {
+    activeToolRef.current = activeTool;
+  }, [activeTool]);
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  // Save to history for undo/redo
+  const saveToHistory = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const json = JSON.stringify(canvas.toJSON());
+    
+    // Remove future states if we're not at the end
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+    }
+    
+    historyRef.current.push(json);
+    historyIndexRef.current = historyRef.current.length - 1;
+    
+    // Limit history size
+    if (historyRef.current.length > 50) {
+      historyRef.current.shift();
+      historyIndexRef.current--;
+    }
+    
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+  }, []);
 
   // Initialize canvas
   useEffect(() => {
@@ -80,7 +116,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
 
     // Pan functionality
     canvas.on('mouse:down', (opt) => {
-      if (activeTool === 'pan') {
+      if (activeToolRef.current === 'pan') {
         isPanningRef.current = true;
         canvas.selection = false;
         const pointer = canvas.getPointer(opt.e);
@@ -90,12 +126,12 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     });
 
     canvas.on('mouse:move', (opt) => {
-      if (isPanningRef.current && activeTool === 'pan') {
+      if (isPanningRef.current && activeToolRef.current === 'pan') {
         const vpt = canvas.viewportTransform;
         const pointer = canvas.getPointer(opt.e);
         if (vpt) {
-          vpt[4] += (pointer.x - lastPosRef.current.x) * zoom;
-          vpt[5] += (pointer.y - lastPosRef.current.y) * zoom;
+          vpt[4] += (pointer.x - lastPosRef.current.x) * zoomRef.current;
+          vpt[5] += (pointer.y - lastPosRef.current.y) * zoomRef.current;
           canvas.requestRenderAll();
           lastPosRef.current = { x: pointer.x, y: pointer.y };
         }
@@ -104,8 +140,8 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
 
     canvas.on('mouse:up', () => {
       isPanningRef.current = false;
-      canvas.selection = activeTool === 'select';
-      if (activeTool === 'pan') {
+      canvas.selection = activeToolRef.current === 'select';
+      if (activeToolRef.current === 'pan') {
         canvas.defaultCursor = 'grab';
       }
     });
@@ -114,32 +150,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
       canvas.dispose();
       fabricRef.current = null;
     };
-  }, []);
-
-  // Save to history for undo/redo
-  const saveToHistory = useCallback(() => {
-    const canvas = fabricRef.current;
-    if (!canvas) return;
-
-    const json = JSON.stringify(canvas.toJSON());
-    
-    // Remove future states if we're not at the end
-    if (historyIndexRef.current < historyRef.current.length - 1) {
-      historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
-    }
-    
-    historyRef.current.push(json);
-    historyIndexRef.current = historyRef.current.length - 1;
-    
-    // Limit history size
-    if (historyRef.current.length > 50) {
-      historyRef.current.shift();
-      historyIndexRef.current--;
-    }
-    
-    setCanUndo(historyIndexRef.current > 0);
-    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
-  }, []);
+  }, [saveToHistory]);
 
   // Undo
   const undo = useCallback(() => {
@@ -302,9 +313,8 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     const canvas = fabricRef.current;
     if (!canvas) return;
     
-    // Don't add markers/text if clicking on existing object
-    const target = canvas.findTarget(e.nativeEvent);
-    if (target) return;
+    // Don't add markers/text if there's an active object (user clicked on something)
+    if (canvas.getActiveObject()) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX - rect.left) / zoom;
