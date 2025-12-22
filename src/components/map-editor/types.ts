@@ -1,4 +1,6 @@
-export type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'marker' | 'text';
+export type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'marker' | 'text' | 'line' | 'rect' | 'ellipse' | 'polygon';
+
+export type ShapeType = 'line' | 'rect' | 'ellipse' | 'polygon';
 
 export type TerrainType = 'grass' | 'forest' | 'water' | 'mountain' | 'desert' | 'snow' | 'road' | 'swamp';
 

@@ -16,13 +16,16 @@ import {
   Type,
   Undo,
   Redo,
-  Trash2,
   Download,
   Save,
   ZoomIn,
   ZoomOut,
   Grid3X3,
   RotateCcw,
+  Minus,
+  Square,
+  Circle,
+  Pentagon,
 } from "lucide-react";
 import type { ToolType, TerrainType, MarkerType } from "./types";
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from "./types";
@@ -36,6 +39,8 @@ interface MapToolbarProps {
   setActiveMarker: (marker: MarkerType) => void;
   brushSize: number;
   setBrushSize: (size: number) => void;
+  strokeWidth: number;
+  setStrokeWidth: (size: number) => void;
   zoom: number;
   setZoom: (zoom: number) => void;
   showGrid: boolean;
@@ -49,13 +54,20 @@ interface MapToolbarProps {
   onSave: () => void;
 }
 
-const tools: { id: ToolType; icon: React.ElementType; label: string }[] = [
-  { id: 'select', icon: MousePointer2, label: 'Выделение' },
-  { id: 'pan', icon: Hand, label: 'Перемещение' },
-  { id: 'brush', icon: Paintbrush, label: 'Кисть' },
-  { id: 'eraser', icon: Eraser, label: 'Ластик' },
-  { id: 'marker', icon: MapPin, label: 'Маркер' },
-  { id: 'text', icon: Type, label: 'Текст' },
+const tools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: string }[] = [
+  { id: 'select', icon: MousePointer2, label: 'Выделение', shortcut: 'V' },
+  { id: 'pan', icon: Hand, label: 'Перемещение', shortcut: 'H' },
+  { id: 'brush', icon: Paintbrush, label: 'Кисть', shortcut: 'B' },
+  { id: 'eraser', icon: Eraser, label: 'Ластик', shortcut: 'E' },
+  { id: 'marker', icon: MapPin, label: 'Маркер', shortcut: 'M' },
+  { id: 'text', icon: Type, label: 'Текст', shortcut: 'T' },
+];
+
+const shapeTools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: string }[] = [
+  { id: 'line', icon: Minus, label: 'Линия', shortcut: 'L' },
+  { id: 'rect', icon: Square, label: 'Прямоугольник', shortcut: 'R' },
+  { id: 'ellipse', icon: Circle, label: 'Эллипс', shortcut: 'O' },
+  { id: 'polygon', icon: Pentagon, label: 'Полигон', shortcut: 'P' },
 ];
 
 export const MapToolbar = ({
@@ -67,6 +79,8 @@ export const MapToolbar = ({
   setActiveMarker,
   brushSize,
   setBrushSize,
+  strokeWidth,
+  setStrokeWidth,
   zoom,
   setZoom,
   showGrid,
@@ -79,10 +93,12 @@ export const MapToolbar = ({
   onExport,
   onSave,
 }: MapToolbarProps) => {
+  const isShapeTool = ['line', 'rect', 'ellipse', 'polygon'].includes(activeTool);
+  
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-4 p-4 bg-card rounded-lg border border-border h-full overflow-y-auto">
-        {/* Tools */}
+        {/* Basic Tools */}
         <div>
           <h4 className="text-sm font-medium mb-2 text-muted-foreground">Инструменты</h4>
           <div className="grid grid-cols-3 gap-1">
@@ -102,7 +118,9 @@ export const MapToolbar = ({
                     <tool.icon className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">{tool.label}</TooltipContent>
+                <TooltipContent side="right">
+                  {tool.label} {tool.shortcut && `(${tool.shortcut})`}
+                </TooltipContent>
               </Tooltip>
             ))}
           </div>
@@ -110,11 +128,41 @@ export const MapToolbar = ({
 
         <Separator />
 
-        {/* Terrain (only show when brush is active) */}
-        {activeTool === 'brush' && (
+        {/* Shape Tools */}
+        <div>
+          <h4 className="text-sm font-medium mb-2 text-muted-foreground">Фигуры</h4>
+          <div className="grid grid-cols-4 gap-1">
+            {shapeTools.map((tool) => (
+              <Tooltip key={tool.id}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setActiveTool(tool.id)}
+                    className={`h-9 w-9 ${
+                      activeTool === tool.id
+                        ? "bg-primary/20 border border-primary text-primary"
+                        : "border border-transparent hover:border-border"
+                    }`}
+                  >
+                    <tool.icon className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {tool.label} {tool.shortcut && `(${tool.shortcut})`}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Terrain (show for brush and shape tools) */}
+        {(activeTool === 'brush' || isShapeTool) && (
           <>
             <div>
-              <h4 className="text-sm font-medium mb-2 text-muted-foreground">Ландшафт</h4>
+              <h4 className="text-sm font-medium mb-2 text-muted-foreground">Ландшафт / Цвет</h4>
               <div className="grid grid-cols-4 gap-1">
                 {TERRAIN_CONFIGS.map((terrain) => (
                   <Tooltip key={terrain.id}>
@@ -183,6 +231,37 @@ export const MapToolbar = ({
                 step={5}
                 className="w-full"
               />
+            </div>
+            <Separator />
+          </>
+        )}
+
+        {/* Stroke Width for shapes */}
+        {isShapeTool && (
+          <>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-muted-foreground">Толщина линии</h4>
+                <span className="text-xs text-muted-foreground">{strokeWidth}px</span>
+              </div>
+              <Slider
+                value={[strokeWidth]}
+                onValueChange={([v]) => setStrokeWidth(v)}
+                min={1}
+                max={20}
+                step={1}
+                className="w-full"
+              />
+            </div>
+            <Separator />
+          </>
+        )}
+
+        {/* Polygon hint */}
+        {activeTool === 'polygon' && (
+          <>
+            <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-md">
+              Кликайте для добавления точек. Двойной клик для завершения полигона.
             </div>
             <Separator />
           </>
