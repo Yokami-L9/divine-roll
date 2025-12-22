@@ -36,6 +36,8 @@ export const MapCanvas = ({
     setActiveMarker,
     brushSize,
     setBrushSize,
+    strokeWidth,
+    setStrokeWidth,
     zoom,
     setZoom,
     showGrid,
@@ -121,6 +123,18 @@ export const MapCanvas = ({
           case 't':
             setActiveTool('text');
             break;
+          case 'l':
+            setActiveTool('line');
+            break;
+          case 'r':
+            setActiveTool('rect');
+            break;
+          case 'o':
+            setActiveTool('ellipse');
+            break;
+          case 'p':
+            setActiveTool('polygon');
+            break;
         }
       }
     };
@@ -155,6 +169,8 @@ export const MapCanvas = ({
         setActiveMarker={setActiveMarker}
         brushSize={brushSize}
         setBrushSize={setBrushSize}
+        strokeWidth={strokeWidth}
+        setStrokeWidth={setStrokeWidth}
         zoom={zoom}
         setZoom={setZoom}
         showGrid={showGrid}
@@ -223,6 +239,10 @@ export const MapCanvas = ({
               {activeTool === 'eraser' && 'Ластик (E)'}
               {activeTool === 'marker' && 'Маркер (M)'}
               {activeTool === 'text' && 'Текст (T)'}
+              {activeTool === 'line' && 'Линия (L)'}
+              {activeTool === 'rect' && 'Прямоугольник (R)'}
+              {activeTool === 'ellipse' && 'Эллипс (O)'}
+              {activeTool === 'polygon' && 'Полигон (P)'}
             </span>
           </span>
         </div>

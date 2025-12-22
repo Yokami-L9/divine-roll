@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Canvas as FabricCanvas, Circle, FabricText, PencilBrush, IText, Group } from 'fabric';
+import { Canvas as FabricCanvas, Circle, FabricText, PencilBrush, IText, Group, Line, Rect, Ellipse, Polygon, Point } from 'fabric';
 import type { ToolType, TerrainType, MarkerType, MapState } from './types';
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from './types';
 import { toast } from 'sonner';
@@ -19,18 +19,25 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   const [activeTerrain, setActiveTerrain] = useState<TerrainType>('grass');
   const [activeMarker, setActiveMarker] = useState<MarkerType>('city');
   const [brushSize, setBrushSize] = useState(30);
+  const [strokeWidth, setStrokeWidth] = useState(3);
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [fillColor, setFillColor] = useState('#4a7c59');
+  const [strokeColor, setStrokeColor] = useState('#ffffff');
   
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
   const isLoadingRef = useRef(false);
   const isPanningRef = useRef(false);
+  const isDrawingShapeRef = useRef(false);
+  const shapeStartRef = useRef({ x: 0, y: 0 });
+  const currentShapeRef = useRef<any>(null);
   const lastPosRef = useRef({ x: 0, y: 0 });
   const activeToolRef = useRef(activeTool);
   const zoomRef = useRef(zoom);
+  const polygonPointsRef = useRef<Point[]>([]);
 
   // Keep refs in sync
   useEffect(() => {
@@ -80,7 +87,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     // Setup brush
     const brush = new PencilBrush(canvas);
     brush.color = TERRAIN_CONFIGS[0].color;
-    brush.width = brushSize;
+    brush.width = 30;
     canvas.freeDrawingBrush = brush;
 
     fabricRef.current = canvas;
@@ -105,7 +112,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
 
     // Track changes for undo/redo
     canvas.on('object:added', () => {
-      if (!isLoadingRef.current) saveToHistory();
+      if (!isLoadingRef.current && !isDrawingShapeRef.current) saveToHistory();
     });
     canvas.on('object:modified', () => {
       if (!isLoadingRef.current) saveToHistory();
@@ -114,35 +121,138 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
       if (!isLoadingRef.current) saveToHistory();
     });
 
-    // Pan functionality
+    // Mouse handlers for shapes and pan
     canvas.on('mouse:down', (opt) => {
-      if (activeToolRef.current === 'pan') {
+      const tool = activeToolRef.current;
+      const pointer = canvas.getPointer(opt.e);
+      
+      if (tool === 'pan') {
         isPanningRef.current = true;
         canvas.selection = false;
-        const pointer = canvas.getPointer(opt.e);
         lastPosRef.current = { x: pointer.x, y: pointer.y };
         canvas.defaultCursor = 'grabbing';
+      } else if (['line', 'rect', 'ellipse'].includes(tool)) {
+        isDrawingShapeRef.current = true;
+        shapeStartRef.current = { x: pointer.x, y: pointer.y };
+        
+        const terrain = TERRAIN_CONFIGS.find(t => t.id === activeTerrain);
+        const color = terrain?.color || '#4a7c59';
+        
+        if (tool === 'line') {
+          currentShapeRef.current = new Line([pointer.x, pointer.y, pointer.x, pointer.y], {
+            stroke: color,
+            strokeWidth: strokeWidth,
+            selectable: false,
+          });
+        } else if (tool === 'rect') {
+          currentShapeRef.current = new Rect({
+            left: pointer.x,
+            top: pointer.y,
+            width: 0,
+            height: 0,
+            fill: color,
+            stroke: strokeColor,
+            strokeWidth: strokeWidth,
+            selectable: false,
+          });
+        } else if (tool === 'ellipse') {
+          currentShapeRef.current = new Ellipse({
+            left: pointer.x,
+            top: pointer.y,
+            rx: 0,
+            ry: 0,
+            fill: color,
+            stroke: strokeColor,
+            strokeWidth: strokeWidth,
+            selectable: false,
+          });
+        }
+        
+        if (currentShapeRef.current) {
+          canvas.add(currentShapeRef.current);
+        }
       }
     });
 
     canvas.on('mouse:move', (opt) => {
-      if (isPanningRef.current && activeToolRef.current === 'pan') {
+      const tool = activeToolRef.current;
+      const pointer = canvas.getPointer(opt.e);
+      
+      if (isPanningRef.current && tool === 'pan') {
         const vpt = canvas.viewportTransform;
-        const pointer = canvas.getPointer(opt.e);
         if (vpt) {
           vpt[4] += (pointer.x - lastPosRef.current.x) * zoomRef.current;
           vpt[5] += (pointer.y - lastPosRef.current.y) * zoomRef.current;
           canvas.requestRenderAll();
           lastPosRef.current = { x: pointer.x, y: pointer.y };
         }
+      } else if (isDrawingShapeRef.current && currentShapeRef.current) {
+        const startX = shapeStartRef.current.x;
+        const startY = shapeStartRef.current.y;
+        
+        if (tool === 'line') {
+          currentShapeRef.current.set({
+            x2: pointer.x,
+            y2: pointer.y,
+          });
+        } else if (tool === 'rect') {
+          const width = Math.abs(pointer.x - startX);
+          const height = Math.abs(pointer.y - startY);
+          currentShapeRef.current.set({
+            left: Math.min(startX, pointer.x),
+            top: Math.min(startY, pointer.y),
+            width,
+            height,
+          });
+        } else if (tool === 'ellipse') {
+          const rx = Math.abs(pointer.x - startX) / 2;
+          const ry = Math.abs(pointer.y - startY) / 2;
+          currentShapeRef.current.set({
+            left: Math.min(startX, pointer.x),
+            top: Math.min(startY, pointer.y),
+            rx,
+            ry,
+          });
+        }
+        
+        canvas.renderAll();
       }
     });
 
     canvas.on('mouse:up', () => {
+      const tool = activeToolRef.current;
+      
       isPanningRef.current = false;
-      canvas.selection = activeToolRef.current === 'select';
-      if (activeToolRef.current === 'pan') {
+      canvas.selection = tool === 'select';
+      
+      if (tool === 'pan') {
         canvas.defaultCursor = 'grab';
+      }
+      
+      if (isDrawingShapeRef.current && currentShapeRef.current) {
+        currentShapeRef.current.set({ selectable: true });
+        canvas.setActiveObject(currentShapeRef.current);
+        isDrawingShapeRef.current = false;
+        currentShapeRef.current = null;
+        saveToHistory();
+      }
+    });
+
+    // Double-click to finish polygon
+    canvas.on('mouse:dblclick', () => {
+      if (activeToolRef.current === 'polygon' && polygonPointsRef.current.length >= 3) {
+        const terrain = TERRAIN_CONFIGS.find(t => t.id === activeTerrain);
+        const color = terrain?.color || '#4a7c59';
+        
+        const polygon = new Polygon(polygonPointsRef.current, {
+          fill: color,
+          stroke: strokeColor,
+          strokeWidth: strokeWidth,
+        });
+        
+        canvas.add(polygon);
+        polygonPointsRef.current = [];
+        saveToHistory();
       }
     });
 
@@ -150,7 +260,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
       canvas.dispose();
       fabricRef.current = null;
     };
-  }, [saveToHistory]);
+  }, [saveToHistory, strokeColor, strokeWidth, activeTerrain]);
 
   // Undo
   const undo = useCallback(() => {
@@ -189,12 +299,15 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     const canvas = fabricRef.current;
     if (!canvas) return;
 
-    canvas.isDrawingMode = activeTool === 'brush' || activeTool === 'eraser';
+    const isDrawingTool = activeTool === 'brush' || activeTool === 'eraser';
+    const isShapeTool = ['line', 'rect', 'ellipse', 'polygon'].includes(activeTool);
+    
+    canvas.isDrawingMode = isDrawingTool;
     canvas.selection = activeTool === 'select';
 
     if (canvas.freeDrawingBrush) {
       if (activeTool === 'eraser') {
-        canvas.freeDrawingBrush.color = '#1a1a2e'; // Background color for erasing
+        canvas.freeDrawingBrush.color = '#1a1a2e';
         canvas.freeDrawingBrush.width = brushSize;
       } else if (activeTool === 'brush') {
         const terrain = TERRAIN_CONFIGS.find(t => t.id === activeTerrain);
@@ -204,24 +317,18 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     }
 
     // Update cursor
-    switch (activeTool) {
-      case 'pan':
-        canvas.defaultCursor = 'grab';
-        canvas.hoverCursor = 'grab';
-        break;
-      case 'brush':
-      case 'eraser':
-        canvas.defaultCursor = 'crosshair';
-        canvas.hoverCursor = 'crosshair';
-        break;
-      case 'marker':
-      case 'text':
-        canvas.defaultCursor = 'pointer';
-        canvas.hoverCursor = 'pointer';
-        break;
-      default:
-        canvas.defaultCursor = 'default';
-        canvas.hoverCursor = 'move';
+    if (activeTool === 'pan') {
+      canvas.defaultCursor = 'grab';
+      canvas.hoverCursor = 'grab';
+    } else if (isDrawingTool || isShapeTool) {
+      canvas.defaultCursor = 'crosshair';
+      canvas.hoverCursor = 'crosshair';
+    } else if (activeTool === 'marker' || activeTool === 'text') {
+      canvas.defaultCursor = 'pointer';
+      canvas.hoverCursor = 'pointer';
+    } else {
+      canvas.defaultCursor = 'default';
+      canvas.hoverCursor = 'move';
     }
   }, [activeTool, activeTerrain, brushSize]);
 
@@ -254,7 +361,6 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     const config = MARKER_CONFIGS.find(m => m.id === markerType);
     if (!config) return;
 
-    // Create marker with circle background
     const circle = new Circle({
       radius: 18,
       fill: config.color,
@@ -274,7 +380,6 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
       top: 0,
     });
 
-    // Create group
     const group = new Group([circle, text], {
       left: x - 18,
       top: y - 18,
@@ -308,12 +413,38 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     canvas.renderAll();
   }, []);
 
+  // Add polygon point
+  const addPolygonPoint = useCallback((x: number, y: number) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    
+    polygonPointsRef.current.push(new Point(x, y));
+    
+    // Draw preview dot
+    const dot = new Circle({
+      left: x - 4,
+      top: y - 4,
+      radius: 4,
+      fill: '#eab308',
+      stroke: '#ffffff',
+      strokeWidth: 1,
+      selectable: false,
+      evented: false,
+    });
+    
+    canvas.add(dot);
+    canvas.renderAll();
+    
+    if (polygonPointsRef.current.length >= 2) {
+      toast.info(`${polygonPointsRef.current.length} точек. Двойной клик для завершения.`);
+    }
+  }, []);
+
   // Handle canvas click
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const canvas = fabricRef.current;
     if (!canvas) return;
     
-    // Don't add markers/text if there's an active object (user clicked on something)
     if (canvas.getActiveObject()) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -324,8 +455,10 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
       addMarker(x, y);
     } else if (activeTool === 'text') {
       addText(x, y);
+    } else if (activeTool === 'polygon') {
+      addPolygonPoint(x, y);
     }
-  }, [activeTool, zoom, addMarker, addText]);
+  }, [activeTool, zoom, addMarker, addText, addPolygonPoint]);
 
   // Delete selected objects
   const deleteSelected = useCallback(() => {
@@ -349,6 +482,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     canvas.clear();
     canvas.backgroundColor = '#1a1a2e';
     canvas.renderAll();
+    polygonPointsRef.current = [];
     saveToHistory();
     toast.success('Холст очищен');
   }, [saveToHistory]);
@@ -395,6 +529,12 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     setActiveMarker,
     brushSize,
     setBrushSize,
+    strokeWidth,
+    setStrokeWidth,
+    fillColor,
+    setFillColor,
+    strokeColor,
+    setStrokeColor,
     zoom,
     setZoom,
     showGrid,
