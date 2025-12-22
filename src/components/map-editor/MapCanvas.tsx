@@ -1,6 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMapCanvas } from "./useMapCanvas";
+import { useLayers } from "./useLayers";
 import { MapToolbar } from "./MapToolbar";
+import { LayersPanel } from "./LayersPanel";
+import { Minimap } from "./Minimap";
 import type { MapState } from "./types";
 
 interface MapCanvasProps {
@@ -19,6 +22,8 @@ export const MapCanvas = ({
   mapId,
 }: MapCanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [viewportSize, setViewportSize] = useState({ width: 800, height: 600 });
+  const [viewportOffset, setViewportOffset] = useState({ x: 0, y: 0 });
   
   const {
     canvasRef,
@@ -50,6 +55,32 @@ export const MapCanvas = ({
     initialData,
     onSave,
   });
+
+  const {
+    layers,
+    activeLayerId,
+    setActiveLayerId,
+    addLayer,
+    deleteLayer,
+    toggleVisibility,
+    toggleLock,
+    moveLayer,
+    renameLayer,
+  } = useLayers();
+
+  // Track viewport size
+  useEffect(() => {
+    const updateViewportSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setViewportSize({ width: rect.width, height: rect.height });
+      }
+    };
+    
+    updateViewportSize();
+    window.addEventListener('resize', updateViewportSize);
+    return () => window.removeEventListener('resize', updateViewportSize);
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -108,9 +139,13 @@ export const MapCanvas = ({
     }
   };
 
+  const handleNavigate = (x: number, y: number) => {
+    setViewportOffset({ x, y });
+  };
+
   return (
-    <div className="grid grid-cols-[200px_1fr] gap-4 h-[calc(100vh-200px)] min-h-[600px]">
-      {/* Toolbar */}
+    <div className="grid grid-cols-[200px_1fr_180px] gap-4 h-[calc(100vh-200px)] min-h-[600px]">
+      {/* Left Toolbar */}
       <MapToolbar
         activeTool={activeTool}
         setActiveTool={setActiveTool}
@@ -163,6 +198,20 @@ export const MapCanvas = ({
           </div>
         )}
 
+        {/* Minimap */}
+        {isReady && (
+          <Minimap
+            canvasRef={canvasRef}
+            zoom={zoom}
+            viewportWidth={viewportSize.width}
+            viewportHeight={viewportSize.height}
+            canvasWidth={width}
+            canvasHeight={height}
+            viewportOffset={viewportOffset}
+            onNavigate={handleNavigate}
+          />
+        )}
+
         {/* Tool info */}
         <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm">
           <span className="text-muted-foreground">
@@ -178,6 +227,19 @@ export const MapCanvas = ({
           </span>
         </div>
       </div>
+
+      {/* Right Panel - Layers */}
+      <LayersPanel
+        layers={layers}
+        activeLayerId={activeLayerId}
+        onSelectLayer={setActiveLayerId}
+        onToggleVisibility={toggleVisibility}
+        onToggleLock={toggleLock}
+        onAddLayer={addLayer}
+        onDeleteLayer={deleteLayer}
+        onMoveLayer={moveLayer}
+        onRenameLayer={renameLayer}
+      />
     </div>
   );
 };
