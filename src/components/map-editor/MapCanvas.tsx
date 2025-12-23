@@ -38,6 +38,10 @@ export const MapCanvas = ({
     setBrushSize,
     strokeWidth,
     setStrokeWidth,
+    fillColor,
+    setFillColor,
+    fillOpacity,
+    setFillOpacity,
     zoom,
     setZoom,
     showGrid,
@@ -51,6 +55,7 @@ export const MapCanvas = ({
     exportAsImage,
     saveMap,
     handleCanvasClick,
+    applyTemplate,
   } = useMapCanvas({
     width,
     height,
@@ -123,6 +128,9 @@ export const MapCanvas = ({
           case 't':
             setActiveTool('text');
             break;
+          case 'f':
+            setActiveTool('fill');
+            break;
           case 'l':
             setActiveTool('line');
             break;
@@ -171,6 +179,10 @@ export const MapCanvas = ({
         setBrushSize={setBrushSize}
         strokeWidth={strokeWidth}
         setStrokeWidth={setStrokeWidth}
+        fillColor={fillColor}
+        setFillColor={setFillColor}
+        fillOpacity={fillOpacity}
+        setFillOpacity={setFillOpacity}
         zoom={zoom}
         setZoom={setZoom}
         showGrid={showGrid}
@@ -182,6 +194,7 @@ export const MapCanvas = ({
         onClear={clearCanvas}
         onExport={handleExport}
         onSave={saveMap}
+        onApplyTemplate={applyTemplate}
       />
 
       {/* Canvas Container */}
@@ -237,6 +250,7 @@ export const MapCanvas = ({
               {activeTool === 'pan' && 'Перемещение (H)'}
               {activeTool === 'brush' && 'Кисть (B)'}
               {activeTool === 'eraser' && 'Ластик (E)'}
+              {activeTool === 'fill' && 'Заливка (F)'}
               {activeTool === 'marker' && 'Маркер (M)'}
               {activeTool === 'text' && 'Текст (T)'}
               {activeTool === 'line' && 'Линия (L)'}
