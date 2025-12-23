@@ -3,6 +3,7 @@ import { Canvas as FabricCanvas, Circle, FabricText, PencilBrush, IText, Group, 
 import type { ToolType, TerrainType, MarkerType, MapState } from './types';
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from './types';
 import { toast } from 'sonner';
+import type { MapTemplate } from './MapTemplates';
 
 interface UseMapCanvasOptions {
   width: number;
@@ -26,6 +27,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   const [canRedo, setCanRedo] = useState(false);
   const [fillColor, setFillColor] = useState('#4a7c59');
   const [strokeColor, setStrokeColor] = useState('#ffffff');
+  const [fillOpacity, setFillOpacity] = useState(100);
   
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
@@ -440,6 +442,30 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     }
   }, []);
 
+  // Fill tool - fill area with color
+  const fillAtPoint = useCallback((x: number, y: number) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    // Create a filled rectangle at click position (simple fill implementation)
+    const terrain = TERRAIN_CONFIGS.find(t => t.id === activeTerrain);
+    const color = terrain?.color || fillColor;
+    
+    const fillRect = new Rect({
+      left: x - 50,
+      top: y - 50,
+      width: 100,
+      height: 100,
+      fill: color,
+      opacity: fillOpacity / 100,
+      selectable: true,
+    });
+    
+    canvas.add(fillRect);
+    canvas.renderAll();
+    saveToHistory();
+  }, [activeTerrain, fillColor, fillOpacity, saveToHistory]);
+
   // Handle canvas click
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const canvas = fabricRef.current;
@@ -457,8 +483,39 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
       addText(x, y);
     } else if (activeTool === 'polygon') {
       addPolygonPoint(x, y);
+    } else if (activeTool === 'fill') {
+      fillAtPoint(x, y);
     }
-  }, [activeTool, zoom, addMarker, addText, addPolygonPoint]);
+  }, [activeTool, zoom, addMarker, addText, addPolygonPoint, fillAtPoint]);
+
+  // Apply template
+  const applyTemplate = useCallback((template: MapTemplate) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    canvas.clear();
+    canvas.backgroundColor = template.backgroundColor;
+
+    template.objects.forEach((obj) => {
+      if (obj.type === 'rect') {
+        const rect = new Rect({
+          ...obj.props,
+          selectable: true,
+        });
+        canvas.add(rect);
+      } else if (obj.type === 'circle') {
+        const circle = new Circle({
+          ...obj.props,
+          selectable: true,
+        });
+        canvas.add(circle);
+      }
+    });
+
+    canvas.renderAll();
+    saveToHistory();
+    toast.success(`Шаблон "${template.name}" применён`);
+  }, [saveToHistory]);
 
   // Delete selected objects
   const deleteSelected = useCallback(() => {
@@ -535,6 +592,8 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     setFillColor,
     strokeColor,
     setStrokeColor,
+    fillOpacity,
+    setFillOpacity,
     zoom,
     setZoom,
     showGrid,
@@ -549,5 +608,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     getMapState,
     saveMap,
     handleCanvasClick,
+    fillAtPoint,
+    applyTemplate,
   };
 };

@@ -26,9 +26,12 @@ import {
   Square,
   Circle,
   Pentagon,
+  PaintBucket,
 } from "lucide-react";
 import type { ToolType, TerrainType, MarkerType } from "./types";
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from "./types";
+import { ColorPicker } from "./ColorPicker";
+import { MapTemplates, type MapTemplate } from "./MapTemplates";
 
 interface MapToolbarProps {
   activeTool: ToolType;
@@ -41,6 +44,10 @@ interface MapToolbarProps {
   setBrushSize: (size: number) => void;
   strokeWidth: number;
   setStrokeWidth: (size: number) => void;
+  fillColor: string;
+  setFillColor: (color: string) => void;
+  fillOpacity: number;
+  setFillOpacity: (opacity: number) => void;
   zoom: number;
   setZoom: (zoom: number) => void;
   showGrid: boolean;
@@ -52,6 +59,7 @@ interface MapToolbarProps {
   onClear: () => void;
   onExport: () => void;
   onSave: () => void;
+  onApplyTemplate: (template: MapTemplate) => void;
 }
 
 const tools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: string }[] = [
@@ -59,6 +67,7 @@ const tools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: 
   { id: 'pan', icon: Hand, label: 'Перемещение', shortcut: 'H' },
   { id: 'brush', icon: Paintbrush, label: 'Кисть', shortcut: 'B' },
   { id: 'eraser', icon: Eraser, label: 'Ластик', shortcut: 'E' },
+  { id: 'fill', icon: PaintBucket, label: 'Заливка', shortcut: 'F' },
   { id: 'marker', icon: MapPin, label: 'Маркер', shortcut: 'M' },
   { id: 'text', icon: Type, label: 'Текст', shortcut: 'T' },
 ];
@@ -81,6 +90,10 @@ export const MapToolbar = ({
   setBrushSize,
   strokeWidth,
   setStrokeWidth,
+  fillColor,
+  setFillColor,
+  fillOpacity,
+  setFillOpacity,
   zoom,
   setZoom,
   showGrid,
@@ -92,8 +105,10 @@ export const MapToolbar = ({
   onClear,
   onExport,
   onSave,
+  onApplyTemplate,
 }: MapToolbarProps) => {
   const isShapeTool = ['line', 'rect', 'ellipse', 'polygon'].includes(activeTool);
+  const showColorPicker = activeTool === 'brush' || activeTool === 'fill' || isShapeTool;
   
   return (
     <TooltipProvider>
@@ -158,8 +173,8 @@ export const MapToolbar = ({
 
         <Separator />
 
-        {/* Terrain (show for brush and shape tools) */}
-        {(activeTool === 'brush' || isShapeTool) && (
+        {/* Terrain (show for brush, fill and shape tools) */}
+        {showColorPicker && (
           <>
             <div>
               <h4 className="text-sm font-medium mb-2 text-muted-foreground">Ландшафт / Цвет</h4>
@@ -182,6 +197,15 @@ export const MapToolbar = ({
                 ))}
               </div>
             </div>
+
+            {/* Custom color picker */}
+            <ColorPicker
+              color={fillColor}
+              onChange={setFillColor}
+              opacity={fillOpacity}
+              onOpacityChange={setFillOpacity}
+              label="Свой цвет"
+            />
             <Separator />
           </>
         )}
@@ -364,6 +388,7 @@ export const MapToolbar = ({
 
         {/* Actions */}
         <div className="space-y-2">
+          <MapTemplates onSelectTemplate={onApplyTemplate} />
           <Button
             onClick={onSave}
             className="w-full bg-gradient-gold hover:opacity-90 gap-2"
