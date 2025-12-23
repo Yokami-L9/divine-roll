@@ -27,6 +27,11 @@ import {
   Circle,
   Pentagon,
   PaintBucket,
+  Image,
+  Copy,
+  Clipboard,
+  CloudFog,
+  Magnet,
 } from "lucide-react";
 import type { ToolType, TerrainType, MarkerType } from "./types";
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from "./types";
@@ -48,6 +53,11 @@ interface MapToolbarProps {
   setFillColor: (color: string) => void;
   fillOpacity: number;
   setFillOpacity: (opacity: number) => void;
+  gridSize: number;
+  setGridSize: (size: number) => void;
+  snapToGrid: boolean;
+  setSnapToGrid: (snap: boolean) => void;
+  showFog: boolean;
   zoom: number;
   setZoom: (zoom: number) => void;
   showGrid: boolean;
@@ -60,6 +70,10 @@ interface MapToolbarProps {
   onExport: () => void;
   onSave: () => void;
   onApplyTemplate: (template: MapTemplate) => void;
+  onImportImage: (file: File) => void;
+  onCopy: () => void;
+  onPaste: () => void;
+  onToggleFog: () => void;
 }
 
 const tools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: string }[] = [
@@ -94,6 +108,11 @@ export const MapToolbar = ({
   setFillColor,
   fillOpacity,
   setFillOpacity,
+  gridSize,
+  setGridSize,
+  snapToGrid,
+  setSnapToGrid,
+  showFog,
   zoom,
   setZoom,
   showGrid,
@@ -106,9 +125,21 @@ export const MapToolbar = ({
   onExport,
   onSave,
   onApplyTemplate,
+  onImportImage,
+  onCopy,
+  onPaste,
+  onToggleFog,
 }: MapToolbarProps) => {
   const isShapeTool = ['line', 'rect', 'ellipse', 'polygon'].includes(activeTool);
   const showColorPicker = activeTool === 'brush' || activeTool === 'fill' || isShapeTool;
+  
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onImportImage(file);
+      e.target.value = '';
+    }
+  };
   
   return (
     <TooltipProvider>
@@ -321,17 +352,91 @@ export const MapToolbar = ({
 
         <Separator />
 
-        {/* Grid Toggle */}
+        {/* Grid Settings */}
+        <div>
+          <h4 className="text-sm font-medium mb-2 text-muted-foreground">Сетка</h4>
+          <div className="flex items-center gap-2 mb-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowGrid(!showGrid)}
+              className={`h-8 w-8 ${showGrid ? "bg-primary/20 text-primary" : ""}`}
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSnapToGrid(!snapToGrid)}
+              className={`h-8 w-8 ${snapToGrid ? "bg-primary/20 text-primary" : ""}`}
+            >
+              <Magnet className="w-4 h-4" />
+            </Button>
+          </div>
+          {showGrid && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Размер:</span>
+              <Slider
+                value={[gridSize]}
+                onValueChange={([v]) => setGridSize(v)}
+                min={20}
+                max={100}
+                step={10}
+                className="flex-1"
+              />
+              <span className="text-xs w-8">{gridSize}</span>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Fog of War */}
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-muted-foreground">Сетка</h4>
+          <h4 className="text-sm font-medium text-muted-foreground">Туман войны</h4>
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setShowGrid(!showGrid)}
-            className={`h-8 w-8 ${showGrid ? "bg-primary/20 text-primary" : ""}`}
+            onClick={onToggleFog}
+            className={`h-8 w-8 ${showFog ? "bg-primary/20 text-primary" : ""}`}
           >
-            <Grid3X3 className="w-4 h-4" />
+            <CloudFog className="w-4 h-4" />
           </Button>
+        </div>
+
+        <Separator />
+
+        {/* Copy/Paste */}
+        <div>
+          <h4 className="text-sm font-medium mb-2 text-muted-foreground">Буфер обмена</h4>
+          <div className="flex gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onCopy}
+                  className="h-8 w-8 border border-border"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Копировать (Ctrl+C)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onPaste}
+                  className="h-8 w-8 border border-border"
+                >
+                  <Clipboard className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Вставить (Ctrl+V)</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
 
         <Separator />
@@ -388,6 +493,21 @@ export const MapToolbar = ({
 
         {/* Actions */}
         <div className="space-y-2">
+          {/* Import Image */}
+          <label className="w-full">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <Button variant="outline" className="w-full gap-2" asChild>
+              <span>
+                <Image className="w-4 h-4" />
+                Импорт фона
+              </span>
+            </Button>
+          </label>
           <MapTemplates onSelectTemplate={onApplyTemplate} />
           <Button
             onClick={onSave}

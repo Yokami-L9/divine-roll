@@ -42,6 +42,11 @@ export const MapCanvas = ({
     setFillColor,
     fillOpacity,
     setFillOpacity,
+    gridSize,
+    setGridSize,
+    snapToGrid,
+    setSnapToGrid,
+    showFog,
     zoom,
     setZoom,
     showGrid,
@@ -56,6 +61,10 @@ export const MapCanvas = ({
     saveMap,
     handleCanvasClick,
     applyTemplate,
+    importBackgroundImage,
+    copySelected,
+    pasteObjects,
+    toggleFogOfWar,
   } = useMapCanvas({
     width,
     height,
@@ -102,6 +111,12 @@ export const MapCanvas = ({
         } else if (e.key === 's') {
           e.preventDefault();
           saveMap();
+        } else if (e.key === 'c') {
+          e.preventDefault();
+          copySelected();
+        } else if (e.key === 'v') {
+          e.preventDefault();
+          pasteObjects();
         }
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -149,7 +164,7 @@ export const MapCanvas = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, saveMap, deleteSelected, setActiveTool]);
+  }, [undo, redo, saveMap, deleteSelected, setActiveTool, copySelected, pasteObjects]);
 
   const handleExport = () => {
     const dataUrl = exportAsImage();
@@ -183,6 +198,11 @@ export const MapCanvas = ({
         setFillColor={setFillColor}
         fillOpacity={fillOpacity}
         setFillOpacity={setFillOpacity}
+        gridSize={gridSize}
+        setGridSize={setGridSize}
+        snapToGrid={snapToGrid}
+        setSnapToGrid={setSnapToGrid}
+        showFog={showFog}
         zoom={zoom}
         setZoom={setZoom}
         showGrid={showGrid}
@@ -195,6 +215,10 @@ export const MapCanvas = ({
         onExport={handleExport}
         onSave={saveMap}
         onApplyTemplate={applyTemplate}
+        onImportImage={importBackgroundImage}
+        onCopy={copySelected}
+        onPaste={pasteObjects}
+        onToggleFog={toggleFogOfWar}
       />
 
       {/* Canvas Container */}
@@ -212,7 +236,7 @@ export const MapCanvas = ({
                 linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
                 linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
               `,
-              backgroundSize: `${40 * zoom}px ${40 * zoom}px`,
+              backgroundSize: `${gridSize * zoom}px ${gridSize * zoom}px`,
             }}
           />
         )}
