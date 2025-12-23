@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Canvas as FabricCanvas, Circle, FabricText, PencilBrush, IText, Group, Line, Rect, Ellipse, Polygon, Point } from 'fabric';
+import { Canvas as FabricCanvas, Circle, FabricText, PencilBrush, IText, Group, Line, Rect, Ellipse, Polygon, Point, FabricImage, FabricObject } from 'fabric';
 import type { ToolType, TerrainType, MarkerType, MapState } from './types';
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from './types';
 import { toast } from 'sonner';
@@ -28,6 +28,11 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   const [fillColor, setFillColor] = useState('#4a7c59');
   const [strokeColor, setStrokeColor] = useState('#ffffff');
   const [fillOpacity, setFillOpacity] = useState(100);
+  const [gridSize, setGridSize] = useState(40);
+  const [snapToGrid, setSnapToGrid] = useState(false);
+  const [showFog, setShowFog] = useState(false);
+  
+  const clipboardRef = useRef<FabricObject[]>([]);
   
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
@@ -575,6 +580,140 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     }
   }, [getMapState, onSave]);
 
+  // Import background image
+  const importBackgroundImage = useCallback((file: File) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      
+      const imgElement = new Image();
+      imgElement.src = dataUrl;
+      imgElement.onload = () => {
+        const fabricImage = new FabricImage(imgElement, {
+          left: 0,
+          top: 0,
+          selectable: true,
+          evented: true,
+        });
+        
+        // Scale to fit canvas while maintaining aspect ratio
+        const scaleX = width / imgElement.width;
+        const scaleY = height / imgElement.height;
+        const scale = Math.min(scaleX, scaleY, 1);
+        fabricImage.scale(scale);
+        
+        canvas.add(fabricImage);
+        canvas.sendObjectToBack(fabricImage);
+        canvas.renderAll();
+        saveToHistory();
+        toast.success('Изображение добавлено');
+      };
+    };
+    reader.readAsDataURL(file);
+  }, [width, height, saveToHistory]);
+
+  // Copy selected objects
+  const copySelected = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length === 0) {
+      toast.info('Выберите объекты для копирования');
+      return;
+    }
+
+    clipboardRef.current = activeObjects;
+    toast.success(`Скопировано ${activeObjects.length} объект(ов)`);
+  }, []);
+
+  // Paste objects
+  const pasteObjects = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas || clipboardRef.current.length === 0) {
+      toast.info('Буфер обмена пуст');
+      return;
+    }
+
+    clipboardRef.current.forEach((obj) => {
+      obj.clone().then((cloned: FabricObject) => {
+        cloned.set({
+          left: (obj.left || 0) + 20,
+          top: (obj.top || 0) + 20,
+          evented: true,
+        });
+        canvas.add(cloned);
+        canvas.setActiveObject(cloned);
+      });
+    });
+    
+    canvas.renderAll();
+    saveToHistory();
+    toast.success('Объекты вставлены');
+  }, [saveToHistory]);
+
+  // Toggle fog of war
+  const toggleFogOfWar = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    if (showFog) {
+      // Remove fog layer
+      const fogLayers = canvas.getObjects().filter((obj: any) => obj.isFog);
+      fogLayers.forEach((fog) => canvas.remove(fog));
+      setShowFog(false);
+      toast.success('Туман войны убран');
+    } else {
+      // Add fog layer
+      const fog = new Rect({
+        left: 0,
+        top: 0,
+        width: width,
+        height: height,
+        fill: 'rgba(0, 0, 0, 0.85)',
+        selectable: false,
+        evented: false,
+        excludeFromExport: false,
+      });
+      (fog as any).isFog = true;
+      canvas.add(fog);
+      setShowFog(true);
+      toast.success('Туман войны добавлен. Используйте ластик для открытия областей.');
+    }
+    canvas.renderAll();
+  }, [showFog, width, height]);
+
+  // Reveal area in fog (eraser mode for fog)
+  const revealFogArea = useCallback((x: number, y: number, radius: number = 50) => {
+    const canvas = fabricRef.current;
+    if (!canvas || !showFog) return;
+
+    // Add a "reveal" circle that cuts through fog
+    const reveal = new Circle({
+      left: x - radius,
+      top: y - radius,
+      radius: radius,
+      fill: 'transparent',
+      stroke: '#eab308',
+      strokeWidth: 2,
+      selectable: true,
+      evented: true,
+    });
+    (reveal as any).isReveal = true;
+    
+    canvas.add(reveal);
+    canvas.renderAll();
+  }, [showFog]);
+
+  // Snap position to grid
+  const snapPosition = useCallback((value: number) => {
+    if (!snapToGrid) return value;
+    return Math.round(value / gridSize) * gridSize;
+  }, [snapToGrid, gridSize]);
+
   return {
     canvasRef,
     isReady,
@@ -594,6 +733,11 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     setStrokeColor,
     fillOpacity,
     setFillOpacity,
+    gridSize,
+    setGridSize,
+    snapToGrid,
+    setSnapToGrid,
+    showFog,
     zoom,
     setZoom,
     showGrid,
@@ -610,5 +754,10 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     handleCanvasClick,
     fillAtPoint,
     applyTemplate,
+    importBackgroundImage,
+    copySelected,
+    pasteObjects,
+    toggleFogOfWar,
+    revealFogArea,
   };
 };
