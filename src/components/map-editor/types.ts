@@ -1,10 +1,17 @@
-export type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'marker' | 'text' | 'line' | 'rect' | 'ellipse' | 'polygon' | 'fill';
+export type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'marker' | 'text' | 'line' | 'rect' | 'ellipse' | 'polygon' | 'fill' | 'measure';
 
 export type ShapeType = 'line' | 'rect' | 'ellipse' | 'polygon';
 
 export type TerrainType = 'grass' | 'forest' | 'water' | 'mountain' | 'desert' | 'snow' | 'road' | 'swamp';
 
 export type MarkerType = 'city' | 'village' | 'camp' | 'dungeon' | 'ruins' | 'tower' | 'cave' | 'port';
+
+export interface ObjectNote {
+  id: string;
+  objectId: string;
+  text: string;
+  createdAt: string;
+}
 
 export interface TerrainConfig {
   id: TerrainType;

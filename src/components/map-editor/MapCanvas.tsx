@@ -65,6 +65,18 @@ export const MapCanvas = ({
     copySelected,
     pasteObjects,
     toggleFogOfWar,
+    measureDistance,
+    measureUnit,
+    setMeasureUnit,
+    pixelsPerUnit,
+    setPixelsPerUnit,
+    clearMeasurement,
+    selectedObjectId,
+    objectNotes,
+    addObjectNote,
+    deleteObjectNote,
+    exportAsJSON,
+    importFromJSON,
   } = useMapCanvas({
     width,
     height,
@@ -158,6 +170,9 @@ export const MapCanvas = ({
           case 'p':
             setActiveTool('polygon');
             break;
+          case 'd':
+            setActiveTool('measure');
+            break;
         }
       }
     };
@@ -219,6 +234,18 @@ export const MapCanvas = ({
         onCopy={copySelected}
         onPaste={pasteObjects}
         onToggleFog={toggleFogOfWar}
+        measureDistance={measureDistance}
+        measureUnit={measureUnit}
+        setMeasureUnit={setMeasureUnit}
+        pixelsPerUnit={pixelsPerUnit}
+        setPixelsPerUnit={setPixelsPerUnit}
+        onClearMeasurement={clearMeasurement}
+        selectedObjectId={selectedObjectId}
+        objectNotes={objectNotes}
+        onAddNote={addObjectNote}
+        onDeleteNote={deleteObjectNote}
+        onExportJSON={exportAsJSON}
+        onImportJSON={importFromJSON}
       />
 
       {/* Canvas Container */}
@@ -281,6 +308,7 @@ export const MapCanvas = ({
               {activeTool === 'rect' && 'Прямоугольник (R)'}
               {activeTool === 'ellipse' && 'Эллипс (O)'}
               {activeTool === 'polygon' && 'Полигон (P)'}
+              {activeTool === 'measure' && 'Измерение (D)'}
             </span>
           </span>
         </div>
