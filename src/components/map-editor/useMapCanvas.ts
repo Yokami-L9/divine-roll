@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Canvas as FabricCanvas, Circle, FabricText, PencilBrush, IText, Group, Line, Rect, Ellipse, Polygon, Point, FabricImage, FabricObject } from 'fabric';
+import { Canvas as FabricCanvas, Circle, FabricText, PencilBrush, IText, Group, Line, Rect, Ellipse, Polygon, Point, FabricImage, FabricObject, ActiveSelection } from 'fabric';
 import type { ToolType, TerrainType, MarkerType, MapState, ObjectNote } from './types';
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from './types';
 import { toast } from 'sonner';
@@ -36,6 +36,8 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   const [measureDistance, setMeasureDistance] = useState<number | null>(null);
   const [measureUnit, setMeasureUnit] = useState('футы');
   const [pixelsPerUnit, setPixelsPerUnit] = useState(40);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+  const [lockedObjects, setLockedObjects] = useState<Set<string>>(new Set());
   
   const clipboardRef = useRef<FabricObject[]>([]);
   const measurePointRef = useRef<{ x: number; y: number } | null>(null);
@@ -210,6 +212,9 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     canvas.on('mouse:move', (opt) => {
       const tool = activeToolRef.current;
       const pointer = canvas.getPointer(opt.e);
+      
+      // Update cursor position
+      setCursorPosition({ x: Math.round(pointer.x), y: Math.round(pointer.y) });
       
       if (isPanningRef.current && tool === 'pan') {
         const vpt = canvas.viewportTransform;
@@ -518,6 +523,8 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
       fillAtPoint(x, y);
     } else if (activeTool === 'measure') {
       measureAtPoint(x, y);
+    } else if (activeTool === 'eyedropper') {
+      pickColorAt(x, y);
     }
   }, [activeTool, zoom, addMarker, addText, addPolygonPoint, fillAtPoint]);
   
@@ -831,6 +838,184 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     return Math.round(value / gridSize) * gridSize;
   }, [snapToGrid, gridSize]);
 
+  // Group selected objects
+  const groupSelected = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const activeSelection = canvas.getActiveObject();
+    if (!activeSelection || activeSelection.type !== 'activeSelection') {
+      toast.info('Выберите несколько объектов для группировки');
+      return;
+    }
+
+    const objects = (activeSelection as ActiveSelection).getObjects();
+    if (objects.length < 2) {
+      toast.info('Выберите минимум 2 объекта');
+      return;
+    }
+
+    const group = new Group(objects, {
+      left: activeSelection.left,
+      top: activeSelection.top,
+    });
+
+    objects.forEach(obj => canvas.remove(obj));
+    canvas.discardActiveObject();
+    canvas.add(group);
+    canvas.setActiveObject(group);
+    canvas.renderAll();
+    saveToHistory();
+    toast.success('Объекты сгруппированы');
+  }, [saveToHistory]);
+
+  // Ungroup selected group
+  const ungroupSelected = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const activeObject = canvas.getActiveObject();
+    if (!activeObject || activeObject.type !== 'group') {
+      toast.info('Выберите группу для разгруппировки');
+      return;
+    }
+
+    const group = activeObject as Group;
+    const items = group.getObjects();
+    const { left = 0, top = 0, scaleX = 1, scaleY = 1, angle = 0 } = group;
+
+    canvas.remove(group);
+
+    items.forEach(item => {
+      item.set({
+        left: left + (item.left || 0) * scaleX,
+        top: top + (item.top || 0) * scaleY,
+        scaleX: (item.scaleX || 1) * scaleX,
+        scaleY: (item.scaleY || 1) * scaleY,
+        angle: (item.angle || 0) + angle,
+      });
+      item.setCoords();
+      canvas.add(item);
+    });
+
+    canvas.renderAll();
+    saveToHistory();
+    toast.success('Группа разгруппирована');
+  }, [saveToHistory]);
+
+  // Duplicate selected objects
+  const duplicateSelected = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length === 0) {
+      toast.info('Выберите объекты для дублирования');
+      return;
+    }
+
+    Promise.all(activeObjects.map(obj => obj.clone())).then(clones => {
+      clones.forEach((cloned: FabricObject) => {
+        cloned.set({
+          left: (cloned.left || 0) + 20,
+          top: (cloned.top || 0) + 20,
+          evented: true,
+        });
+        canvas.add(cloned);
+      });
+      canvas.discardActiveObject();
+      if (clones.length === 1) {
+        canvas.setActiveObject(clones[0]);
+      }
+      canvas.renderAll();
+      saveToHistory();
+      toast.success(`Дублировано ${clones.length} объект(ов)`);
+    });
+  }, [saveToHistory]);
+
+  // Toggle lock on selected objects
+  const toggleLockSelected = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length === 0) {
+      toast.info('Выберите объекты для блокировки');
+      return;
+    }
+
+    activeObjects.forEach(obj => {
+      const isLocked = obj.lockMovementX;
+      obj.set({
+        lockMovementX: !isLocked,
+        lockMovementY: !isLocked,
+        lockScalingX: !isLocked,
+        lockScalingY: !isLocked,
+        lockRotation: !isLocked,
+        hasControls: isLocked,
+        selectable: true,
+      });
+    });
+
+    canvas.renderAll();
+    const isNowLocked = activeObjects[0].lockMovementX;
+    toast.success(isNowLocked ? 'Объекты заблокированы' : 'Объекты разблокированы');
+  }, []);
+
+  // Pick color from canvas
+  const pickColorAt = useCallback((x: number, y: number) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    // Get objects at point
+    const objects = canvas.getObjects();
+    for (let i = objects.length - 1; i >= 0; i--) {
+      const obj = objects[i];
+      if (obj.containsPoint(new Point(x, y))) {
+        const objFill = obj.fill;
+        if (typeof objFill === 'string') {
+          setFillColor(objFill);
+          toast.success(`Цвет: ${objFill}`);
+          setActiveTool('brush');
+          return;
+        }
+      }
+    }
+    
+    // If no object found, pick background
+    const bgColor = canvas.backgroundColor;
+    if (typeof bgColor === 'string') {
+      setFillColor(bgColor);
+      toast.success(`Цвет фона: ${bgColor}`);
+    }
+  }, [setActiveTool]);
+
+  // Bring object to front
+  const bringToFront = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const activeObject = canvas.getActiveObject();
+    if (activeObject) {
+      canvas.bringObjectToFront(activeObject);
+      canvas.renderAll();
+      saveToHistory();
+    }
+  }, [saveToHistory]);
+
+  // Send object to back
+  const sendToBack = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const activeObject = canvas.getActiveObject();
+    if (activeObject) {
+      canvas.sendObjectToBack(activeObject);
+      canvas.renderAll();
+      saveToHistory();
+    }
+  }, [saveToHistory]);
+
   // Add note to object
   const addObjectNote = useCallback((objectId: string, text: string) => {
     const note: ObjectNote = {
@@ -949,5 +1134,12 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     deleteObjectNote,
     exportAsJSON,
     importFromJSON,
+    cursorPosition,
+    groupSelected,
+    ungroupSelected,
+    duplicateSelected,
+    toggleLockSelected,
+    bringToFront,
+    sendToBack,
   };
 };

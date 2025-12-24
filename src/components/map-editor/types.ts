@@ -1,4 +1,4 @@
-export type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'marker' | 'text' | 'line' | 'rect' | 'ellipse' | 'polygon' | 'fill' | 'measure';
+export type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'marker' | 'text' | 'line' | 'rect' | 'ellipse' | 'polygon' | 'fill' | 'measure' | 'eyedropper';
 
 export type ShapeType = 'line' | 'rect' | 'ellipse' | 'polygon';
 

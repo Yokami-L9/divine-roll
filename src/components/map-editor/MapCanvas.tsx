@@ -77,6 +77,13 @@ export const MapCanvas = ({
     deleteObjectNote,
     exportAsJSON,
     importFromJSON,
+    cursorPosition,
+    groupSelected,
+    ungroupSelected,
+    duplicateSelected,
+    toggleLockSelected,
+    bringToFront,
+    sendToBack,
   } = useMapCanvas({
     width,
     height,
@@ -129,6 +136,15 @@ export const MapCanvas = ({
         } else if (e.key === 'v') {
           e.preventDefault();
           pasteObjects();
+        } else if (e.key === 'g' && e.shiftKey) {
+          e.preventDefault();
+          ungroupSelected();
+        } else if (e.key === 'g') {
+          e.preventDefault();
+          groupSelected();
+        } else if (e.key === 'd') {
+          e.preventDefault();
+          duplicateSelected();
         }
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -173,13 +189,16 @@ export const MapCanvas = ({
           case 'd':
             setActiveTool('measure');
             break;
+          case 'i':
+            setActiveTool('eyedropper');
+            break;
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, saveMap, deleteSelected, setActiveTool, copySelected, pasteObjects]);
+  }, [undo, redo, saveMap, deleteSelected, setActiveTool, copySelected, pasteObjects, groupSelected, ungroupSelected, duplicateSelected]);
 
   const handleExport = () => {
     const dataUrl = exportAsImage();
@@ -246,6 +265,13 @@ export const MapCanvas = ({
         onDeleteNote={deleteObjectNote}
         onExportJSON={exportAsJSON}
         onImportJSON={importFromJSON}
+        cursorPosition={cursorPosition}
+        onGroup={groupSelected}
+        onUngroup={ungroupSelected}
+        onDuplicate={duplicateSelected}
+        onToggleLock={toggleLockSelected}
+        onBringToFront={bringToFront}
+        onSendToBack={sendToBack}
       />
 
       {/* Canvas Container */}
@@ -309,6 +335,7 @@ export const MapCanvas = ({
               {activeTool === 'ellipse' && 'Эллипс (O)'}
               {activeTool === 'polygon' && 'Полигон (P)'}
               {activeTool === 'measure' && 'Измерение (D)'}
+              {activeTool === 'eyedropper' && 'Пипетка (I)'}
             </span>
           </span>
         </div>
