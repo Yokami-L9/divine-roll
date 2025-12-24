@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Canvas as FabricCanvas, Circle, FabricText, PencilBrush, IText, Group, Line, Rect, Ellipse, Polygon, Point, FabricImage, FabricObject } from 'fabric';
-import type { ToolType, TerrainType, MarkerType, MapState } from './types';
+import type { ToolType, TerrainType, MarkerType, MapState, ObjectNote } from './types';
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from './types';
 import { toast } from 'sonner';
 import type { MapTemplate } from './MapTemplates';
@@ -31,8 +31,15 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   const [gridSize, setGridSize] = useState(40);
   const [snapToGrid, setSnapToGrid] = useState(false);
   const [showFog, setShowFog] = useState(false);
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [objectNotes, setObjectNotes] = useState<ObjectNote[]>([]);
+  const [measureDistance, setMeasureDistance] = useState<number | null>(null);
+  const [measureUnit, setMeasureUnit] = useState('футы');
+  const [pixelsPerUnit, setPixelsPerUnit] = useState(40);
   
   const clipboardRef = useRef<FabricObject[]>([]);
+  const measurePointRef = useRef<{ x: number; y: number } | null>(null);
+  const measureLineRef = useRef<Line | null>(null);
   
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
@@ -126,6 +133,25 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     });
     canvas.on('object:removed', () => {
       if (!isLoadingRef.current) saveToHistory();
+    });
+    
+    // Track selection for notes
+    canvas.on('selection:created', (e) => {
+      const obj = e.selected?.[0];
+      if (obj) {
+        const objId = (obj as any).customId || obj.toString();
+        setSelectedObjectId(objId);
+      }
+    });
+    canvas.on('selection:updated', (e) => {
+      const obj = e.selected?.[0];
+      if (obj) {
+        const objId = (obj as any).customId || obj.toString();
+        setSelectedObjectId(objId);
+      }
+    });
+    canvas.on('selection:cleared', () => {
+      setSelectedObjectId(null);
     });
 
     // Mouse handlers for shapes and pan
@@ -490,8 +516,99 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
       addPolygonPoint(x, y);
     } else if (activeTool === 'fill') {
       fillAtPoint(x, y);
+    } else if (activeTool === 'measure') {
+      measureAtPoint(x, y);
     }
   }, [activeTool, zoom, addMarker, addText, addPolygonPoint, fillAtPoint]);
+  
+  // Measure distance between two points
+  const measureAtPoint = useCallback((x: number, y: number) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    if (!measurePointRef.current) {
+      // First point
+      measurePointRef.current = { x, y };
+      const dot = new Circle({
+        left: x - 5,
+        top: y - 5,
+        radius: 5,
+        fill: '#eab308',
+        stroke: '#ffffff',
+        strokeWidth: 2,
+        selectable: false,
+        evented: false,
+      });
+      (dot as any).isMeasure = true;
+      canvas.add(dot);
+      canvas.renderAll();
+      toast.info('Кликните на вторую точку для измерения');
+    } else {
+      // Second point - calculate distance
+      const startX = measurePointRef.current.x;
+      const startY = measurePointRef.current.y;
+      const distance = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
+      
+      // Remove old measure elements
+      const measureElements = canvas.getObjects().filter((obj: any) => obj.isMeasure);
+      measureElements.forEach((el) => canvas.remove(el));
+      
+      // Draw measurement line
+      const line = new Line([startX, startY, x, y], {
+        stroke: '#eab308',
+        strokeWidth: 2,
+        strokeDashArray: [5, 5],
+        selectable: false,
+        evented: false,
+      });
+      (line as any).isMeasure = true;
+      
+      // Draw end point
+      const endDot = new Circle({
+        left: x - 5,
+        top: y - 5,
+        radius: 5,
+        fill: '#eab308',
+        stroke: '#ffffff',
+        strokeWidth: 2,
+        selectable: false,
+        evented: false,
+      });
+      (endDot as any).isMeasure = true;
+      
+      // Draw start point
+      const startDot = new Circle({
+        left: startX - 5,
+        top: startY - 5,
+        radius: 5,
+        fill: '#eab308',
+        stroke: '#ffffff',
+        strokeWidth: 2,
+        selectable: false,
+        evented: false,
+      });
+      (startDot as any).isMeasure = true;
+      
+      canvas.add(line, startDot, endDot);
+      canvas.renderAll();
+      
+      setMeasureDistance(distance);
+      measurePointRef.current = null;
+    }
+  }, []);
+
+  // Clear measurement
+  const clearMeasurement = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const measureElements = canvas.getObjects().filter((obj: any) => obj.isMeasure);
+    measureElements.forEach((el) => canvas.remove(el));
+    canvas.renderAll();
+    
+    measurePointRef.current = null;
+    setMeasureDistance(null);
+  }, []);
 
   // Apply template
   const applyTemplate = useCallback((template: MapTemplate) => {
@@ -714,6 +831,67 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     return Math.round(value / gridSize) * gridSize;
   }, [snapToGrid, gridSize]);
 
+  // Add note to object
+  const addObjectNote = useCallback((objectId: string, text: string) => {
+    const note: ObjectNote = {
+      id: crypto.randomUUID(),
+      objectId,
+      text,
+      createdAt: new Date().toISOString(),
+    };
+    setObjectNotes(prev => [...prev, note]);
+    toast.success('Заметка добавлена');
+  }, []);
+
+  // Delete note
+  const deleteObjectNote = useCallback((noteId: string) => {
+    setObjectNotes(prev => prev.filter(n => n.id !== noteId));
+    toast.success('Заметка удалена');
+  }, []);
+
+  // Export JSON
+  const exportAsJSON = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return null;
+
+    const data = {
+      version: 1,
+      width,
+      height,
+      backgroundColor: canvas.backgroundColor,
+      canvasData: canvas.toJSON(),
+      notes: objectNotes,
+    };
+    
+    return JSON.stringify(data, null, 2);
+  }, [width, height, objectNotes]);
+
+  // Import JSON
+  const importFromJSON = useCallback((data: object) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    try {
+      const mapData = data as any;
+      isLoadingRef.current = true;
+      
+      canvas.loadFromJSON(mapData.canvasData).then(() => {
+        canvas.backgroundColor = mapData.backgroundColor || '#1a1a2e';
+        canvas.renderAll();
+        isLoadingRef.current = false;
+        saveToHistory();
+        
+        if (mapData.notes) {
+          setObjectNotes(mapData.notes);
+        }
+        
+        toast.success('Карта импортирована');
+      });
+    } catch (error) {
+      toast.error('Ошибка импорта карты');
+    }
+  }, [saveToHistory]);
+
   return {
     canvasRef,
     isReady,
@@ -759,5 +937,17 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     pasteObjects,
     toggleFogOfWar,
     revealFogArea,
+    measureDistance,
+    measureUnit,
+    setMeasureUnit,
+    pixelsPerUnit,
+    setPixelsPerUnit,
+    clearMeasurement,
+    selectedObjectId,
+    objectNotes,
+    addObjectNote,
+    deleteObjectNote,
+    exportAsJSON,
+    importFromJSON,
   };
 };

@@ -32,11 +32,15 @@ import {
   Clipboard,
   CloudFog,
   Magnet,
+  Ruler,
 } from "lucide-react";
-import type { ToolType, TerrainType, MarkerType } from "./types";
+import type { ToolType, TerrainType, MarkerType, ObjectNote } from "./types";
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from "./types";
 import { ColorPicker } from "./ColorPicker";
 import { MapTemplates, type MapTemplate } from "./MapTemplates";
+import { MeasureTool } from "./MeasureTool";
+import { ObjectNotes } from "./ObjectNotes";
+import { ImportExport } from "./ImportExport";
 
 interface MapToolbarProps {
   activeTool: ToolType;
@@ -74,6 +78,18 @@ interface MapToolbarProps {
   onCopy: () => void;
   onPaste: () => void;
   onToggleFog: () => void;
+  measureDistance: number | null;
+  measureUnit: string;
+  setMeasureUnit: (unit: string) => void;
+  pixelsPerUnit: number;
+  setPixelsPerUnit: (value: number) => void;
+  onClearMeasurement: () => void;
+  selectedObjectId: string | null;
+  objectNotes: ObjectNote[];
+  onAddNote: (objectId: string, text: string) => void;
+  onDeleteNote: (noteId: string) => void;
+  onExportJSON: () => string | null;
+  onImportJSON: (data: object) => void;
 }
 
 const tools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: string }[] = [
@@ -84,6 +100,7 @@ const tools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: 
   { id: 'fill', icon: PaintBucket, label: 'Заливка', shortcut: 'F' },
   { id: 'marker', icon: MapPin, label: 'Маркер', shortcut: 'M' },
   { id: 'text', icon: Type, label: 'Текст', shortcut: 'T' },
+  { id: 'measure', icon: Ruler, label: 'Измерение', shortcut: 'D' },
 ];
 
 const shapeTools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: string }[] = [
@@ -129,6 +146,18 @@ export const MapToolbar = ({
   onCopy,
   onPaste,
   onToggleFog,
+  measureDistance,
+  measureUnit,
+  setMeasureUnit,
+  pixelsPerUnit,
+  setPixelsPerUnit,
+  onClearMeasurement,
+  selectedObjectId,
+  objectNotes,
+  onAddNote,
+  onDeleteNote,
+  onExportJSON,
+  onImportJSON,
 }: MapToolbarProps) => {
   const isShapeTool = ['line', 'rect', 'ellipse', 'polygon'].includes(activeTool);
   const showColorPicker = activeTool === 'brush' || activeTool === 'fill' || isShapeTool;
@@ -488,6 +517,37 @@ export const MapToolbar = ({
             </Tooltip>
           </div>
         </div>
+
+        {/* Measure Tool UI */}
+        {activeTool === 'measure' && (
+          <>
+            <MeasureTool
+              distance={measureDistance}
+              unit={measureUnit}
+              setUnit={setMeasureUnit}
+              pixelsPerUnit={pixelsPerUnit}
+              setPixelsPerUnit={setPixelsPerUnit}
+              onClear={onClearMeasurement}
+            />
+            <Separator />
+          </>
+        )}
+
+        {/* Object Notes */}
+        <ObjectNotes
+          notes={objectNotes}
+          selectedObjectId={selectedObjectId}
+          onAddNote={onAddNote}
+          onDeleteNote={onDeleteNote}
+        />
+
+        <Separator />
+
+        {/* JSON Import/Export */}
+        <ImportExport
+          onExportJSON={onExportJSON}
+          onImportJSON={onImportJSON}
+        />
 
         <div className="flex-1" />
 
