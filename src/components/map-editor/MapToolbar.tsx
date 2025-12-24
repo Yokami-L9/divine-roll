@@ -33,6 +33,14 @@ import {
   CloudFog,
   Magnet,
   Ruler,
+  Pipette,
+  Group,
+  Ungroup,
+  Lock,
+  Unlock,
+  ArrowUpToLine,
+  ArrowDownToLine,
+  CopyPlus,
 } from "lucide-react";
 import type { ToolType, TerrainType, MarkerType, ObjectNote } from "./types";
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from "./types";
@@ -90,6 +98,13 @@ interface MapToolbarProps {
   onDeleteNote: (noteId: string) => void;
   onExportJSON: () => string | null;
   onImportJSON: (data: object) => void;
+  cursorPosition: { x: number; y: number };
+  onGroup: () => void;
+  onUngroup: () => void;
+  onDuplicate: () => void;
+  onToggleLock: () => void;
+  onBringToFront: () => void;
+  onSendToBack: () => void;
 }
 
 const tools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: string }[] = [
@@ -101,6 +116,7 @@ const tools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: 
   { id: 'marker', icon: MapPin, label: 'Маркер', shortcut: 'M' },
   { id: 'text', icon: Type, label: 'Текст', shortcut: 'T' },
   { id: 'measure', icon: Ruler, label: 'Измерение', shortcut: 'D' },
+  { id: 'eyedropper', icon: Pipette, label: 'Пипетка', shortcut: 'I' },
 ];
 
 const shapeTools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: string }[] = [
@@ -158,6 +174,13 @@ export const MapToolbar = ({
   onDeleteNote,
   onExportJSON,
   onImportJSON,
+  cursorPosition,
+  onGroup,
+  onUngroup,
+  onDuplicate,
+  onToggleLock,
+  onBringToFront,
+  onSendToBack,
 }: MapToolbarProps) => {
   const isShapeTool = ['line', 'rect', 'ellipse', 'polygon'].includes(activeTool);
   const showColorPicker = activeTool === 'brush' || activeTool === 'fill' || isShapeTool;
@@ -470,6 +493,91 @@ export const MapToolbar = ({
 
         <Separator />
 
+        {/* Object Operations */}
+        <div>
+          <h4 className="text-sm font-medium mb-2 text-muted-foreground">Объекты</h4>
+          <div className="grid grid-cols-3 gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onGroup}
+                  className="h-8 w-8 border border-border"
+                >
+                  <Group className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Группировать (Ctrl+G)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onUngroup}
+                  className="h-8 w-8 border border-border"
+                >
+                  <Ungroup className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Разгруппировать (Ctrl+Shift+G)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onDuplicate}
+                  className="h-8 w-8 border border-border"
+                >
+                  <CopyPlus className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Дублировать (Ctrl+D)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleLock}
+                  className="h-8 w-8 border border-border"
+                >
+                  <Lock className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Блокировать/Разблокировать</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onBringToFront}
+                  className="h-8 w-8 border border-border"
+                >
+                  <ArrowUpToLine className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>На передний план</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onSendToBack}
+                  className="h-8 w-8 border border-border"
+                >
+                  <ArrowDownToLine className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>На задний план</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+
         {/* History */}
         <div>
           <h4 className="text-sm font-medium mb-2 text-muted-foreground">История</h4>
@@ -548,6 +656,15 @@ export const MapToolbar = ({
           onExportJSON={onExportJSON}
           onImportJSON={onImportJSON}
         />
+
+        <Separator />
+
+        {/* Cursor Position */}
+        <div className="bg-muted/50 rounded-md p-2 text-center">
+          <span className="text-xs text-muted-foreground">
+            X: {cursorPosition.x} Y: {cursorPosition.y}
+          </span>
+        </div>
 
         <div className="flex-1" />
 
