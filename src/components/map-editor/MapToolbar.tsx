@@ -37,10 +37,11 @@ import {
   Group,
   Ungroup,
   Lock,
-  Unlock,
   ArrowUpToLine,
   ArrowDownToLine,
   CopyPlus,
+  Route,
+  RotateCw,
 } from "lucide-react";
 import type { ToolType, TerrainType, MarkerType, ObjectNote } from "./types";
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from "./types";
@@ -49,6 +50,8 @@ import { MapTemplates, type MapTemplate } from "./MapTemplates";
 import { MeasureTool } from "./MeasureTool";
 import { ObjectNotes } from "./ObjectNotes";
 import { ImportExport } from "./ImportExport";
+import { PathTool, type PathPoint, type MapPath } from "./PathTool";
+import { AssetLibrary, type Asset } from "./AssetLibrary";
 
 interface MapToolbarProps {
   activeTool: ToolType;
@@ -105,6 +108,22 @@ interface MapToolbarProps {
   onToggleLock: () => void;
   onBringToFront: () => void;
   onSendToBack: () => void;
+  // Path tool props
+  isDrawingPath: boolean;
+  currentPath: PathPoint[];
+  paths: MapPath[];
+  pathColor: string;
+  setPathColor: (color: string) => void;
+  onStartPath: () => void;
+  onFinishPath: () => void;
+  onCancelPath: () => void;
+  onDeletePath: (pathId: string) => void;
+  onClearAllPaths: () => void;
+  // Asset props
+  onAddAsset: (asset: Asset) => void;
+  // Snap rotation
+  snapRotation: boolean;
+  setSnapRotation: (snap: boolean) => void;
 }
 
 const tools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: string }[] = [
@@ -117,6 +136,7 @@ const tools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: 
   { id: 'text', icon: Type, label: 'Текст', shortcut: 'T' },
   { id: 'measure', icon: Ruler, label: 'Измерение', shortcut: 'D' },
   { id: 'eyedropper', icon: Pipette, label: 'Пипетка', shortcut: 'I' },
+  { id: 'path', icon: Route, label: 'Маршрут', shortcut: 'W' },
 ];
 
 const shapeTools: { id: ToolType; icon: React.ElementType; label: string; shortcut?: string }[] = [
@@ -181,6 +201,19 @@ export const MapToolbar = ({
   onToggleLock,
   onBringToFront,
   onSendToBack,
+  isDrawingPath,
+  currentPath,
+  paths,
+  pathColor,
+  setPathColor,
+  onStartPath,
+  onFinishPath,
+  onCancelPath,
+  onDeletePath,
+  onClearAllPaths,
+  onAddAsset,
+  snapRotation,
+  setSnapRotation,
 }: MapToolbarProps) => {
   const isShapeTool = ['line', 'rect', 'ellipse', 'polygon'].includes(activeTool);
   const showColorPicker = activeTool === 'brush' || activeTool === 'fill' || isShapeTool;
@@ -443,7 +476,20 @@ export const MapToolbar = ({
 
         <Separator />
 
-        {/* Fog of War */}
+        {/* Snap Rotation */}
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium text-muted-foreground">Привязка угла</h4>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSnapRotation(!snapRotation)}
+            className={`h-8 w-8 ${snapRotation ? "bg-primary/20 text-primary" : ""}`}
+          >
+            <RotateCw className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <Separator />
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-medium text-muted-foreground">Туман войны</h4>
           <Button
@@ -626,6 +672,27 @@ export const MapToolbar = ({
           </div>
         </div>
 
+        {/* Path Tool */}
+        {activeTool === 'path' && (
+          <>
+            <PathTool
+              isDrawingPath={isDrawingPath}
+              currentPath={currentPath}
+              paths={paths}
+              pathColor={pathColor}
+              setPathColor={setPathColor}
+              pixelsPerUnit={pixelsPerUnit}
+              measureUnit={measureUnit}
+              onStartPath={onStartPath}
+              onFinishPath={onFinishPath}
+              onCancelPath={onCancelPath}
+              onDeletePath={onDeletePath}
+              onClearAllPaths={onClearAllPaths}
+            />
+            <Separator />
+          </>
+        )}
+
         {/* Measure Tool UI */}
         {activeTool === 'measure' && (
           <>
@@ -686,6 +753,7 @@ export const MapToolbar = ({
             </Button>
           </label>
           <MapTemplates onSelectTemplate={onApplyTemplate} />
+          <AssetLibrary onSelectAsset={onAddAsset} />
           <Button
             onClick={onSave}
             className="w-full bg-gradient-gold hover:opacity-90 gap-2"

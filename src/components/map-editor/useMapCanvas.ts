@@ -4,6 +4,8 @@ import type { ToolType, TerrainType, MarkerType, MapState, ObjectNote } from './
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from './types';
 import { toast } from 'sonner';
 import type { MapTemplate } from './MapTemplates';
+import type { Asset } from './AssetLibrary';
+import type { PathPoint, MapPath } from './PathTool';
 
 interface UseMapCanvasOptions {
   width: number;
@@ -39,9 +41,20 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [lockedObjects, setLockedObjects] = useState<Set<string>>(new Set());
   
+  // Path tool state
+  const [isDrawingPath, setIsDrawingPath] = useState(false);
+  const [currentPath, setCurrentPath] = useState<PathPoint[]>([]);
+  const [paths, setPaths] = useState<MapPath[]>([]);
+  const [pathColor, setPathColor] = useState('#eab308');
+  
+  // Snap rotation angles
+  const [snapRotation, setSnapRotation] = useState(false);
+  
   const clipboardRef = useRef<FabricObject[]>([]);
   const measurePointRef = useRef<{ x: number; y: number } | null>(null);
   const measureLineRef = useRef<Line | null>(null);
+  const pathLinesRef = useRef<Line[]>([]);
+  const pathDotsRef = useRef<Circle[]>([]);
   
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
@@ -525,8 +538,10 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
       measureAtPoint(x, y);
     } else if (activeTool === 'eyedropper') {
       pickColorAt(x, y);
+    } else if (activeTool === 'path' && isDrawingPath) {
+      addPathPoint(x, y);
     }
-  }, [activeTool, zoom, addMarker, addText, addPolygonPoint, fillAtPoint]);
+  }, [activeTool, zoom, addMarker, addText, addPolygonPoint, fillAtPoint, isDrawingPath]);
   
   // Measure distance between two points
   const measureAtPoint = useCallback((x: number, y: number) => {
@@ -1077,6 +1092,205 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     }
   }, [saveToHistory]);
 
+  // Path tool functions
+  const addPathPoint = useCallback((x: number, y: number) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const newPoint = { x, y };
+    
+    // Draw dot at point
+    const dot = new Circle({
+      left: x - 4,
+      top: y - 4,
+      radius: 4,
+      fill: pathColor,
+      stroke: '#ffffff',
+      strokeWidth: 2,
+      selectable: false,
+      evented: false,
+    });
+    (dot as any).isPathElement = true;
+    pathDotsRef.current.push(dot);
+    canvas.add(dot);
+
+    // Draw line from previous point if exists
+    if (currentPath.length > 0) {
+      const prevPoint = currentPath[currentPath.length - 1];
+      const line = new Line([prevPoint.x, prevPoint.y, x, y], {
+        stroke: pathColor,
+        strokeWidth: 3,
+        selectable: false,
+        evented: false,
+      });
+      (line as any).isPathElement = true;
+      pathLinesRef.current.push(line);
+      canvas.add(line);
+    }
+
+    canvas.renderAll();
+    setCurrentPath(prev => [...prev, newPoint]);
+  }, [pathColor, currentPath]);
+
+  const startPath = useCallback(() => {
+    setIsDrawingPath(true);
+    setCurrentPath([]);
+    setActiveTool('path');
+    toast.info('Кликайте на карту для создания маршрута');
+  }, []);
+
+  const finishPath = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas || currentPath.length < 2) return;
+
+    // Calculate total distance
+    let totalDistance = 0;
+    for (let i = 1; i < currentPath.length; i++) {
+      totalDistance += Math.sqrt(
+        Math.pow(currentPath[i].x - currentPath[i - 1].x, 2) +
+        Math.pow(currentPath[i].y - currentPath[i - 1].y, 2)
+      );
+    }
+
+    const newPath: MapPath = {
+      id: crypto.randomUUID(),
+      points: [...currentPath],
+      color: pathColor,
+      totalDistance,
+    };
+
+    setPaths(prev => [...prev, newPath]);
+    setIsDrawingPath(false);
+    setCurrentPath([]);
+    pathLinesRef.current = [];
+    pathDotsRef.current = [];
+    saveToHistory();
+    toast.success('Маршрут сохранён');
+  }, [currentPath, pathColor, saveToHistory]);
+
+  const cancelPath = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    // Remove all path elements
+    pathLinesRef.current.forEach(line => canvas.remove(line));
+    pathDotsRef.current.forEach(dot => canvas.remove(dot));
+    pathLinesRef.current = [];
+    pathDotsRef.current = [];
+    canvas.renderAll();
+
+    setIsDrawingPath(false);
+    setCurrentPath([]);
+    setActiveTool('select');
+  }, []);
+
+  const deletePath = useCallback((pathId: string) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    // Remove visual elements for this path
+    const pathElements = canvas.getObjects().filter((obj: any) => obj.pathId === pathId);
+    pathElements.forEach(el => canvas.remove(el));
+    canvas.renderAll();
+
+    setPaths(prev => prev.filter(p => p.id !== pathId));
+    toast.success('Маршрут удалён');
+  }, []);
+
+  const clearAllPaths = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const pathElements = canvas.getObjects().filter((obj: any) => obj.isPathElement);
+    pathElements.forEach(el => canvas.remove(el));
+    canvas.renderAll();
+
+    setPaths([]);
+    toast.success('Все маршруты удалены');
+  }, []);
+
+  // Add asset to canvas
+  const addAsset = useCallback((asset: Asset, x?: number, y?: number) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const posX = x ?? width / 2;
+    const posY = y ?? height / 2;
+    const size = asset.size || 30;
+
+    const circle = new Circle({
+      radius: size / 2 + 5,
+      fill: asset.color + '33',
+      stroke: asset.color,
+      strokeWidth: 2,
+      originX: 'center',
+      originY: 'center',
+      left: 0,
+      top: 0,
+    });
+
+    const text = new FabricText(asset.emoji || '?', {
+      fontSize: size,
+      originX: 'center',
+      originY: 'center',
+      left: 0,
+      top: 0,
+    });
+
+    const group = new Group([circle, text], {
+      left: posX - size / 2,
+      top: posY - size / 2,
+      selectable: true,
+      hasControls: true,
+    });
+
+    (group as any).customId = `asset_${asset.id}_${Date.now()}`;
+    (group as any).assetType = asset.id;
+
+    canvas.add(group);
+    canvas.setActiveObject(group);
+    canvas.renderAll();
+    saveToHistory();
+    toast.success(`Добавлен: ${asset.name}`);
+  }, [width, height, saveToHistory]);
+
+  // Snap rotation to angles (15, 45, 90)
+  useEffect(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const handleRotating = (e: any) => {
+      if (!snapRotation) return;
+      
+      const obj = e.target;
+      if (!obj) return;
+
+      const angle = obj.angle || 0;
+      const snapAngles = [0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345, 360];
+      
+      let closestAngle = snapAngles[0];
+      let minDiff = Math.abs(angle - snapAngles[0]);
+      
+      for (const snap of snapAngles) {
+        const diff = Math.abs(angle - snap);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestAngle = snap;
+        }
+      }
+      
+      if (minDiff < 5) {
+        obj.set('angle', closestAngle === 360 ? 0 : closestAngle);
+      }
+    };
+
+    canvas.on('object:rotating', handleRotating);
+
+    return () => {
+      canvas.off('object:rotating', handleRotating);
+    };
+  }, [snapRotation]);
+
   return {
     canvasRef,
     isReady,
@@ -1141,5 +1355,21 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     toggleLockSelected,
     bringToFront,
     sendToBack,
+    // Path tool
+    isDrawingPath,
+    currentPath,
+    paths,
+    pathColor,
+    setPathColor,
+    startPath,
+    finishPath,
+    cancelPath,
+    deletePath,
+    clearAllPaths,
+    // Asset
+    addAsset,
+    // Snap rotation
+    snapRotation,
+    setSnapRotation,
   };
 };

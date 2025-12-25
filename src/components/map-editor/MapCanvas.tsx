@@ -84,6 +84,22 @@ export const MapCanvas = ({
     toggleLockSelected,
     bringToFront,
     sendToBack,
+    // Path tool
+    isDrawingPath,
+    currentPath,
+    paths,
+    pathColor,
+    setPathColor,
+    startPath,
+    finishPath,
+    cancelPath,
+    deletePath,
+    clearAllPaths,
+    // Asset
+    addAsset,
+    // Snap rotation
+    snapRotation,
+    setSnapRotation,
   } = useMapCanvas({
     width,
     height,
@@ -192,6 +208,9 @@ export const MapCanvas = ({
           case 'i':
             setActiveTool('eyedropper');
             break;
+          case 'w':
+            setActiveTool('path');
+            break;
         }
       }
     };
@@ -272,6 +291,19 @@ export const MapCanvas = ({
         onToggleLock={toggleLockSelected}
         onBringToFront={bringToFront}
         onSendToBack={sendToBack}
+        isDrawingPath={isDrawingPath}
+        currentPath={currentPath}
+        paths={paths}
+        pathColor={pathColor}
+        setPathColor={setPathColor}
+        onStartPath={startPath}
+        onFinishPath={finishPath}
+        onCancelPath={cancelPath}
+        onDeletePath={deletePath}
+        onClearAllPaths={clearAllPaths}
+        onAddAsset={addAsset}
+        snapRotation={snapRotation}
+        setSnapRotation={setSnapRotation}
       />
 
       {/* Canvas Container */}
@@ -336,6 +368,8 @@ export const MapCanvas = ({
               {activeTool === 'polygon' && 'Полигон (P)'}
               {activeTool === 'measure' && 'Измерение (D)'}
               {activeTool === 'eyedropper' && 'Пипетка (I)'}
+              {activeTool === 'path' && 'Маршрут (W)'}
+              {activeTool === 'asset' && 'Ассет'}
             </span>
           </span>
         </div>
