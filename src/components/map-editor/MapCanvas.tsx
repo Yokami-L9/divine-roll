@@ -312,22 +312,22 @@ export const MapCanvas = ({
         className="relative bg-card rounded-lg border border-border overflow-auto"
         onClick={handleCanvasClick}
       >
-        {/* Grid Overlay */}
+        {/* Canvas */}
+        <canvas ref={canvasRef} className="block" />
+
+        {/* Grid Overlay - rendered ABOVE canvas */}
         {showGrid && (
           <div
-            className="absolute inset-0 pointer-events-none opacity-20"
+            className="absolute inset-0 pointer-events-none z-10"
             style={{
               backgroundImage: `
-                linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
-                linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
+                linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
+                linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px)
               `,
               backgroundSize: `${gridSize * zoom}px ${gridSize * zoom}px`,
             }}
           />
         )}
-
-        {/* Canvas */}
-        <canvas ref={canvasRef} className="block" />
 
         {/* Loading overlay */}
         {!isReady && (
