@@ -3,7 +3,7 @@ import type { MapLayer } from './types';
 
 export const useLayers = () => {
   const [layers, setLayers] = useState<MapLayer[]>([
-    { id: 'base', name: 'Базовый слой', visible: true, locked: false, objects: [] },
+    { id: 'base', name: 'Базовый слой', visible: true, locked: false, opacity: 1, objects: [] },
   ]);
   const [activeLayerId, setActiveLayerId] = useState<string>('base');
 
@@ -13,6 +13,7 @@ export const useLayers = () => {
       name: `Слой ${layers.length + 1}`,
       visible: true,
       locked: false,
+      opacity: 1,
       objects: [],
     };
     setLayers(prev => [...prev, newLayer]);

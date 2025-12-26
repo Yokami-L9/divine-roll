@@ -1,8 +1,28 @@
-export type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'marker' | 'text' | 'line' | 'rect' | 'ellipse' | 'polygon' | 'fill' | 'measure' | 'eyedropper' | 'path' | 'asset';
+export type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'marker' | 'text' | 'line' | 'rect' | 'ellipse' | 'polygon' | 'fill' | 'measure' | 'eyedropper' | 'path' | 'asset' | 'stamp';
 
 export type ShapeType = 'line' | 'rect' | 'ellipse' | 'polygon';
 
-export type TerrainType = 'grass' | 'forest' | 'water' | 'mountain' | 'desert' | 'snow' | 'road' | 'swamp';
+export type TerrainType = 
+  | 'grass' 
+  | 'forest' 
+  | 'water' 
+  | 'mountain' 
+  | 'desert' 
+  | 'snow' 
+  | 'road' 
+  | 'swamp'
+  | 'deepWater'
+  | 'shallowWater'
+  | 'denseForest'
+  | 'plains'
+  | 'tundra'
+  | 'volcanic'
+  | 'dirt'
+  | 'stone'
+  | 'jungle'
+  | 'savanna'
+  | 'farmland'
+  | 'sand';
 
 export type MarkerType = 'city' | 'village' | 'camp' | 'dungeon' | 'ruins' | 'tower' | 'cave' | 'port';
 
@@ -13,10 +33,48 @@ export interface ObjectNote {
   createdAt: string;
 }
 
+export interface BrushSettings {
+  size: number;
+  opacity: number;
+  hardness: number;
+  spacing: number;
+  terrain: TerrainType;
+}
+
+export interface PathPoint {
+  x: number;
+  y: number;
+}
+
+export interface MapPath {
+  id: string;
+  points: PathPoint[];
+  color: string;
+  width: number;
+  style: 'solid' | 'dashed' | 'dotted';
+  label?: string;
+}
+
+export interface MarkerData {
+  id: string;
+  x: number;
+  y: number;
+  type: MarkerType;
+  label: string;
+  icon: string;
+}
+
+export interface HistoryState {
+  canvasData: string;
+  paths: MapPath[];
+  markers: MarkerData[];
+}
+
 export interface TerrainConfig {
   id: TerrainType;
   label: string;
   color: string;
+  category: 'land' | 'water' | 'special';
   pattern?: string;
 }
 
@@ -32,6 +90,7 @@ export interface MapLayer {
   name: string;
   visible: boolean;
   locked: boolean;
+  opacity: number;
   objects: string[]; // fabric object IDs
 }
 
@@ -44,14 +103,33 @@ export interface MapState {
 }
 
 export const TERRAIN_CONFIGS: TerrainConfig[] = [
-  { id: 'grass', label: 'Трава', color: '#4a7c59', pattern: 'solid' },
-  { id: 'forest', label: 'Лес', color: '#2d5a3d', pattern: 'dots' },
-  { id: 'water', label: 'Вода', color: '#3b82f6', pattern: 'waves' },
-  { id: 'mountain', label: 'Горы', color: '#78716c', pattern: 'triangles' },
-  { id: 'desert', label: 'Пустыня', color: '#d4a373', pattern: 'dots' },
-  { id: 'snow', label: 'Снег', color: '#e2e8f0', pattern: 'solid' },
-  { id: 'road', label: 'Дорога', color: '#a3a3a3', pattern: 'solid' },
-  { id: 'swamp', label: 'Болото', color: '#5c6d4f', pattern: 'waves' },
+  // Land terrains
+  { id: 'grass', label: 'Трава', color: '#4a7c59', category: 'land' },
+  { id: 'plains', label: 'Равнины', color: '#8cb369', category: 'land' },
+  { id: 'forest', label: 'Лес', color: '#2d5a3d', category: 'land' },
+  { id: 'denseForest', label: 'Густой лес', color: '#1a4025', category: 'land' },
+  { id: 'jungle', label: 'Джунгли', color: '#1e5a23', category: 'land' },
+  { id: 'savanna', label: 'Саванна', color: '#b4a060', category: 'land' },
+  { id: 'farmland', label: 'Поля', color: '#826440', category: 'land' },
+  { id: 'mountain', label: 'Горы', color: '#78716c', category: 'land' },
+  { id: 'stone', label: 'Камень', color: '#6e6a65', category: 'land' },
+  { id: 'dirt', label: 'Земля', color: '#785a3c', category: 'land' },
+  { id: 'road', label: 'Дорога', color: '#5f5041', category: 'land' },
+  { id: 'sand', label: 'Песок', color: '#d2b98c', category: 'land' },
+  { id: 'desert', label: 'Пустыня', color: '#dcb470', category: 'land' },
+  
+  // Cold terrains
+  { id: 'snow', label: 'Снег', color: '#f0f5fa', category: 'land' },
+  { id: 'tundra', label: 'Тундра', color: '#aab4af', category: 'land' },
+  
+  // Water terrains
+  { id: 'water', label: 'Вода', color: '#2366a0', category: 'water' },
+  { id: 'shallowWater', label: 'Мелководье', color: '#4196b4', category: 'water' },
+  { id: 'deepWater', label: 'Глубокая вода', color: '#0f3264', category: 'water' },
+  { id: 'swamp', label: 'Болото', color: '#374b32', category: 'water' },
+  
+  // Special terrains
+  { id: 'volcanic', label: 'Вулканическая', color: '#2d2320', category: 'special' },
 ];
 
 export const MARKER_CONFIGS: MarkerConfig[] = [
