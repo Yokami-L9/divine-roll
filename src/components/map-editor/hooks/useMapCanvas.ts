@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Canvas as FabricCanvas, FabricImage } from 'fabric';
-import { textureGenerator } from '../textures/TextureGenerator';
-import { ToolType, TerrainType, BrushSettings, MapPath, PathPoint, MarkerData, HistoryState } from '../types';
+import { patternGenerator, TerrainType } from '../textures/PatternGenerator';
+import { ToolType, BrushSettings, MapPath, PathPoint, MarkerData, HistoryState } from '../types';
 import { toast } from 'sonner';
 
 export interface UseMapCanvasProps {
@@ -14,6 +14,7 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<FabricCanvas | null>(null);
   const textureLayerRef = useRef<HTMLCanvasElement | null>(null);
+  const previewLayerRef = useRef<HTMLCanvasElement | null>(null);
   
   // State
   const [isReady, setIsReady] = useState(false);
@@ -23,11 +24,11 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
   
   // Brush settings
   const [brushSettings, setBrushSettings] = useState<BrushSettings>({
-    size: 50,
-    opacity: 1,
+    size: 80,
+    opacity: 0.9,
     hardness: 0.7,
-    spacing: 0.15,
-    terrain: 'grass'
+    spacing: 0.12,
+    terrain: 'grass' as any
   });
   
   // History
@@ -45,18 +46,17 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
   const [markers, setMarkers] = useState<MarkerData[]>([]);
   
   // Grid
-  const [showGrid, setShowGrid] = useState(true);
+  const [showGrid, setShowGrid] = useState(false);
   const [gridSize, setGridSize] = useState(50);
   
   // Cursor
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
-  
-  // Layers
-  const [activeLayerId, setActiveLayerId] = useState('terrain');
+  const [showBrushPreview, setShowBrushPreview] = useState(true);
   
   // Drawing state
   const isDrawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   // Initialize canvas
   useEffect(() => {
@@ -65,31 +65,47 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     const canvas = new FabricCanvas(canvasRef.current, {
       width,
       height,
-      backgroundColor: '#1a1a2e',
+      backgroundColor: '#1a2a3a',
       selection: activeTool === 'select',
       isDrawingMode: false,
     });
 
     fabricRef.current = canvas;
     
-    // Create texture layer canvas (for terrain painting)
+    // Create texture layer canvas
     const textureCanvas = document.createElement('canvas');
     textureCanvas.width = width;
     textureCanvas.height = height;
     const textureCtx = textureCanvas.getContext('2d')!;
-    textureCtx.fillStyle = '#2d3748';
-    textureCtx.fillRect(0, 0, width, height);
+    
+    // Fill with base water/ocean
+    const oceanPattern = patternGenerator.generatePattern('deepWater', 256);
+    const pattern = textureCtx.createPattern(oceanPattern, 'repeat');
+    if (pattern) {
+      textureCtx.fillStyle = pattern;
+      textureCtx.fillRect(0, 0, width, height);
+    }
     textureLayerRef.current = textureCanvas;
     
-    // Add texture layer as background image
+    // Create preview layer
+    const previewCanvas = document.createElement('canvas');
+    previewCanvas.width = width;
+    previewCanvas.height = height;
+    previewLayerRef.current = previewCanvas;
+    
     updateBackgroundFromTexture();
     
     setIsReady(true);
-    saveToHistory();
     
-    toast.success('Редактор карт готов к работе!');
+    // Initial save to history
+    setTimeout(() => saveToHistory(), 100);
+    
+    toast.success('Редактор карт загружен!');
 
     return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
       canvas.dispose();
     };
   }, [width, height]);
@@ -108,28 +124,32 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     });
   }, []);
 
-  // Paint terrain with procedural texture
-  const paintTerrain = useCallback((x: number, y: number) => {
+  // Paint terrain with detailed pattern
+  const paintTerrain = useCallback((x: number, y: number, immediate = false) => {
     if (!textureLayerRef.current) return;
     
     const ctx = textureLayerRef.current.getContext('2d')!;
-    const { size, opacity, hardness, terrain } = brushSettings;
+    const { size, opacity, terrain } = brushSettings;
     
-    // Generate brush pattern
-    const pattern = textureGenerator.generateBrushPattern(terrain, size);
+    // Generate brush with pattern
+    const brush = patternGenerator.generateBrush(terrain as TerrainType, Math.max(40, size));
     
     ctx.save();
     ctx.globalAlpha = opacity;
     ctx.globalCompositeOperation = 'source-over';
     
     // Draw the textured brush
-    ctx.drawImage(pattern, x - size / 2, y - size / 2, size, size);
+    ctx.drawImage(brush, x - size / 2, y - size / 2, size, size);
     
     ctx.restore();
-  }, [brushSettings]);
+    
+    if (immediate) {
+      updateBackgroundFromTexture();
+    }
+  }, [brushSettings, updateBackgroundFromTexture]);
 
   // Erase terrain
-  const eraseTerrain = useCallback((x: number, y: number) => {
+  const eraseTerrain = useCallback((x: number, y: number, immediate = false) => {
     if (!textureLayerRef.current) return;
     
     const ctx = textureLayerRef.current.getContext('2d')!;
@@ -141,7 +161,7 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     // Create soft eraser
     const gradient = ctx.createRadialGradient(x, y, 0, x, y, size / 2);
     gradient.addColorStop(0, 'rgba(0,0,0,1)');
-    gradient.addColorStop(0.7, 'rgba(0,0,0,0.8)');
+    gradient.addColorStop(0.6, 'rgba(0,0,0,0.8)');
     gradient.addColorStop(1, 'rgba(0,0,0,0)');
     
     ctx.fillStyle = gradient;
@@ -150,12 +170,16 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     ctx.fill();
     
     ctx.restore();
-  }, [brushSettings]);
+    
+    if (immediate) {
+      updateBackgroundFromTexture();
+    }
+  }, [brushSettings, updateBackgroundFromTexture]);
 
   // Interpolate points for smooth strokes
   const interpolatePoints = useCallback((x1: number, y1: number, x2: number, y2: number, callback: (x: number, y: number) => void) => {
     const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-    const spacing = brushSettings.size * brushSettings.spacing;
+    const spacing = Math.max(5, brushSettings.size * brushSettings.spacing);
     const steps = Math.max(1, Math.floor(distance / spacing));
     
     for (let i = 0; i <= steps; i++) {
@@ -166,6 +190,16 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     }
   }, [brushSettings]);
 
+  // Throttled background update
+  const scheduleBackgroundUpdate = useCallback(() => {
+    if (animationFrameRef.current) return;
+    
+    animationFrameRef.current = requestAnimationFrame(() => {
+      updateBackgroundFromTexture();
+      animationFrameRef.current = null;
+    });
+  }, [updateBackgroundFromTexture]);
+
   // Handle mouse events
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -175,11 +209,11 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     if (activeTool === 'brush') {
       isDrawingRef.current = true;
       lastPointRef.current = { x, y };
-      paintTerrain(x, y);
+      paintTerrain(x, y, true);
     } else if (activeTool === 'eraser') {
       isDrawingRef.current = true;
       lastPointRef.current = { x, y };
-      eraseTerrain(x, y);
+      eraseTerrain(x, y, true);
     } else if (activeTool === 'path') {
       if (!isDrawingPath) {
         setIsDrawingPath(true);
@@ -187,8 +221,10 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
       } else {
         setCurrentPath(prev => [...prev, { x, y }]);
       }
+    } else if (activeTool === 'fill') {
+      fillTerrain(brushSettings.terrain as TerrainType);
     }
-  }, [activeTool, zoom, pan, isDrawingPath, paintTerrain, eraseTerrain]);
+  }, [activeTool, zoom, pan, isDrawingPath, paintTerrain, eraseTerrain, brushSettings.terrain]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -200,15 +236,15 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     if (!isDrawingRef.current || !lastPointRef.current) return;
     
     if (activeTool === 'brush') {
-      interpolatePoints(lastPointRef.current.x, lastPointRef.current.y, x, y, paintTerrain);
+      interpolatePoints(lastPointRef.current.x, lastPointRef.current.y, x, y, (px, py) => paintTerrain(px, py));
       lastPointRef.current = { x, y };
-      updateBackgroundFromTexture();
+      scheduleBackgroundUpdate();
     } else if (activeTool === 'eraser') {
-      interpolatePoints(lastPointRef.current.x, lastPointRef.current.y, x, y, eraseTerrain);
+      interpolatePoints(lastPointRef.current.x, lastPointRef.current.y, x, y, (px, py) => eraseTerrain(px, py));
       lastPointRef.current = { x, y };
-      updateBackgroundFromTexture();
+      scheduleBackgroundUpdate();
     }
-  }, [activeTool, zoom, pan, interpolatePoints, paintTerrain, eraseTerrain, updateBackgroundFromTexture]);
+  }, [activeTool, zoom, pan, interpolatePoints, paintTerrain, eraseTerrain, scheduleBackgroundUpdate]);
 
   const handleMouseUp = useCallback(() => {
     if (isDrawingRef.current) {
@@ -221,7 +257,7 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
 
   // History management
   const saveToHistory = useCallback(() => {
-    if (!fabricRef.current || !textureLayerRef.current) return;
+    if (!textureLayerRef.current) return;
     
     const canvasData = textureLayerRef.current.toDataURL();
     const newState: HistoryState = {
@@ -232,9 +268,13 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     
     setHistory(prev => {
       const newHistory = prev.slice(0, historyIndex + 1);
+      // Limit history size
+      if (newHistory.length > 30) {
+        newHistory.shift();
+      }
       return [...newHistory, newState];
     });
-    setHistoryIndex(prev => prev + 1);
+    setHistoryIndex(prev => Math.min(prev + 1, 30));
   }, [paths, markers, historyIndex]);
 
   const undo = useCallback(() => {
@@ -256,6 +296,7 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
       setPaths(state.paths);
       setMarkers(state.markers);
       setHistoryIndex(prevIndex);
+      toast.info('Отменено');
     }
   }, [historyIndex, history, width, height, updateBackgroundFromTexture]);
 
@@ -278,10 +319,11 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
       setPaths(state.paths);
       setMarkers(state.markers);
       setHistoryIndex(nextIndex);
+      toast.info('Повторено');
     }
   }, [historyIndex, history, width, height, updateBackgroundFromTexture]);
 
-  // Finish path
+  // Path functions
   const finishPath = useCallback(() => {
     if (currentPath.length < 2) {
       setCurrentPath([]);
@@ -308,6 +350,24 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     setCurrentPath([]);
     setIsDrawingPath(false);
   }, []);
+
+  // Fill entire canvas with terrain
+  const fillTerrain = useCallback((terrain: TerrainType) => {
+    if (!textureLayerRef.current) return;
+    
+    const ctx = textureLayerRef.current.getContext('2d')!;
+    const pattern = patternGenerator.generatePattern(terrain, 256);
+    const canvasPattern = ctx.createPattern(pattern, 'repeat');
+    
+    if (canvasPattern) {
+      ctx.fillStyle = canvasPattern;
+      ctx.fillRect(0, 0, width, height);
+    }
+    
+    updateBackgroundFromTexture();
+    saveToHistory();
+    toast.success(`Заливка: ${terrain}`);
+  }, [width, height, updateBackgroundFromTexture, saveToHistory]);
 
   // Export
   const exportAsImage = useCallback(() => {
@@ -338,36 +398,17 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
       ctx.stroke();
     });
     
-    // Draw grid if enabled
-    if (showGrid) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.lineWidth = 1;
-      
-      for (let x = 0; x <= width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-      }
-      for (let y = 0; y <= height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-      }
-    }
-    
     const link = document.createElement('a');
     link.download = `map_${Date.now()}.png`;
     link.href = exportCanvas.toDataURL('image/png');
     link.click();
     
     toast.success('Карта экспортирована!');
-  }, [width, height, paths, showGrid, gridSize]);
+  }, [width, height, paths]);
 
   // Zoom controls
-  const zoomIn = useCallback(() => setZoom(z => Math.min(z * 1.2, 5)), []);
-  const zoomOut = useCallback(() => setZoom(z => Math.max(z / 1.2, 0.2)), []);
+  const zoomIn = useCallback(() => setZoom(z => Math.min(z * 1.25, 4)), []);
+  const zoomOut = useCallback(() => setZoom(z => Math.max(z / 1.25, 0.25)), []);
   const resetZoom = useCallback(() => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
@@ -378,8 +419,12 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     if (!textureLayerRef.current) return;
     
     const ctx = textureLayerRef.current.getContext('2d')!;
-    ctx.fillStyle = '#2d3748';
-    ctx.fillRect(0, 0, width, height);
+    const oceanPattern = patternGenerator.generatePattern('deepWater', 256);
+    const pattern = ctx.createPattern(oceanPattern, 'repeat');
+    if (pattern) {
+      ctx.fillStyle = pattern;
+      ctx.fillRect(0, 0, width, height);
+    }
     
     updateBackgroundFromTexture();
     setPaths([]);
@@ -387,20 +432,6 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     saveToHistory();
     
     toast.success('Холст очищен');
-  }, [width, height, updateBackgroundFromTexture, saveToHistory]);
-
-  // Fill terrain
-  const fillTerrain = useCallback((terrain: TerrainType) => {
-    if (!textureLayerRef.current) return;
-    
-    const texture = textureGenerator.generateTerrainTexture(terrain, width, height);
-    const ctx = textureLayerRef.current.getContext('2d')!;
-    ctx.drawImage(texture, 0, 0);
-    
-    updateBackgroundFromTexture();
-    saveToHistory();
-    
-    toast.success(`Заливка: ${terrain}`);
   }, [width, height, updateBackgroundFromTexture, saveToHistory]);
 
   return {
@@ -430,8 +461,8 @@ export function useMapCanvas({ width, height, onSave }: UseMapCanvasProps) {
     gridSize,
     setGridSize,
     cursorPosition,
-    activeLayerId,
-    setActiveLayerId,
+    showBrushPreview,
+    setShowBrushPreview,
     historyIndex,
     history,
     
