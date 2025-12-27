@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useMapCanvas } from "./useMapCanvas";
 import { useLayers } from "./useLayers";
 import { MapToolbar } from "./MapToolbar";
@@ -100,6 +100,13 @@ export const MapCanvas = ({
     // Snap rotation
     snapRotation,
     setSnapRotation,
+    // Terrain painting
+    paintTerrainAt,
+    eraseTerrainAt,
+    interpolatePaint,
+    updateBackgroundFromTexture,
+    isTerrainPaintingRef,
+    lastPaintPointRef,
   } = useMapCanvas({
     width,
     height,
@@ -233,6 +240,47 @@ export const MapCanvas = ({
     setViewportOffset({ x, y });
   };
 
+  // Terrain painting mouse handlers
+  const handleTerrainMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (activeTool !== 'brush' && activeTool !== 'eraser') return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / zoom;
+    const y = (e.clientY - rect.top) / zoom;
+    
+    isTerrainPaintingRef.current = true;
+    lastPaintPointRef.current = { x, y };
+    
+    if (activeTool === 'brush') {
+      paintTerrainAt(x, y);
+    } else {
+      eraseTerrainAt(x, y);
+    }
+    updateBackgroundFromTexture();
+  }, [activeTool, zoom, paintTerrainAt, eraseTerrainAt, updateBackgroundFromTexture, isTerrainPaintingRef, lastPaintPointRef]);
+
+  const handleTerrainMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isTerrainPaintingRef.current || !lastPaintPointRef.current) return;
+    if (activeTool !== 'brush' && activeTool !== 'eraser') return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / zoom;
+    const y = (e.clientY - rect.top) / zoom;
+    
+    const paintFn = activeTool === 'brush' ? paintTerrainAt : eraseTerrainAt;
+    interpolatePaint(lastPaintPointRef.current.x, lastPaintPointRef.current.y, x, y, paintFn);
+    lastPaintPointRef.current = { x, y };
+    updateBackgroundFromTexture();
+  }, [activeTool, zoom, paintTerrainAt, eraseTerrainAt, interpolatePaint, updateBackgroundFromTexture, isTerrainPaintingRef, lastPaintPointRef]);
+
+  const handleTerrainMouseUp = useCallback(() => {
+    if (isTerrainPaintingRef.current) {
+      isTerrainPaintingRef.current = false;
+      lastPaintPointRef.current = null;
+      updateBackgroundFromTexture();
+    }
+  }, [updateBackgroundFromTexture, isTerrainPaintingRef, lastPaintPointRef]);
+
   return (
     <div className="grid grid-cols-[200px_1fr_180px] gap-4 h-[calc(100vh-200px)] min-h-[600px]">
       {/* Left Toolbar */}
@@ -311,6 +359,10 @@ export const MapCanvas = ({
         ref={containerRef}
         className="relative bg-card rounded-lg border border-border overflow-auto"
         onClick={handleCanvasClick}
+        onMouseDown={handleTerrainMouseDown}
+        onMouseMove={handleTerrainMouseMove}
+        onMouseUp={handleTerrainMouseUp}
+        onMouseLeave={handleTerrainMouseUp}
       >
         {/* Canvas */}
         <canvas ref={canvasRef} className="block" />
