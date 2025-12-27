@@ -1,11 +1,12 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Canvas as FabricCanvas, Circle, FabricText, PencilBrush, IText, Group, Line, Rect, Ellipse, Polygon, Point, FabricImage, FabricObject, ActiveSelection } from 'fabric';
+import { Canvas as FabricCanvas, Circle, FabricText, IText, Group, Line, Rect, Ellipse, Polygon, Point, FabricImage, FabricObject, ActiveSelection } from 'fabric';
 import type { ToolType, TerrainType, MarkerType, MapState, ObjectNote } from './types';
 import { TERRAIN_CONFIGS, MARKER_CONFIGS } from './types';
 import { toast } from 'sonner';
 import type { MapTemplate } from './MapTemplates';
 import type { Asset } from './AssetLibrary';
 import type { PathPoint, MapPath } from './PathTool';
+import { patternGenerator, TerrainType as PatternTerrainType } from './textures/PatternGenerator';
 
 interface UseMapCanvasOptions {
   width: number;
@@ -17,11 +18,13 @@ interface UseMapCanvasOptions {
 export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanvasOptions) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<FabricCanvas | null>(null);
+  // Texture layer for terrain painting
+  const textureLayerRef = useRef<HTMLCanvasElement | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolType>('brush');
   const [activeTerrain, setActiveTerrain] = useState<TerrainType>('grass');
   const [activeMarker, setActiveMarker] = useState<MarkerType>('city');
-  const [brushSize, setBrushSize] = useState(30);
+  const [brushSize, setBrushSize] = useState(60);
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
@@ -50,6 +53,10 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   // Snap rotation angles
   const [snapRotation, setSnapRotation] = useState(false);
   
+  // Terrain painting refs
+  const isTerrainPaintingRef = useRef(false);
+  const lastPaintPointRef = useRef<{ x: number; y: number } | null>(null);
+  
   const clipboardRef = useRef<FabricObject[]>([]);
   const measurePointRef = useRef<{ x: number; y: number } | null>(null);
   const measureLineRef = useRef<Line | null>(null);
@@ -76,6 +83,97 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   useEffect(() => {
     zoomRef.current = zoom;
   }, [zoom]);
+
+  // Update background from texture layer
+  const updateBackgroundFromTexture = useCallback((canvas?: FabricCanvas) => {
+    const targetCanvas = canvas || fabricRef.current;
+    if (!targetCanvas || !textureLayerRef.current) return;
+    
+    const dataUrl = textureLayerRef.current.toDataURL('image/png');
+    
+    FabricImage.fromURL(dataUrl).then((img) => {
+      if (targetCanvas) {
+        targetCanvas.backgroundImage = img;
+        targetCanvas.renderAll();
+      }
+    });
+  }, []);
+
+  // Paint terrain with pattern
+  const paintTerrainAt = useCallback((x: number, y: number) => {
+    if (!textureLayerRef.current) return;
+    
+    const ctx = textureLayerRef.current.getContext('2d')!;
+    
+    // Map activeTerrain to PatternGenerator terrain type
+    const terrainMap: Record<string, PatternTerrainType> = {
+      'grass': 'grass',
+      'forest': 'forest',
+      'denseForest': 'denseForest',
+      'water': 'water',
+      'deepWater': 'deepWater',
+      'shallowWater': 'water',
+      'mountain': 'mountain',
+      'desert': 'desert',
+      'snow': 'snow',
+      'road': 'road',
+      'swamp': 'swamp',
+      'plains': 'meadow',
+      'tundra': 'tundra',
+      'volcanic': 'volcanic',
+      'dirt': 'dirt',
+      'stone': 'stone',
+      'jungle': 'jungle',
+      'savanna': 'tallGrass',
+      'farmland': 'farmland',
+      'sand': 'sand',
+    };
+    
+    const patternTerrain = terrainMap[activeTerrain] || 'grass';
+    const brush = patternGenerator.generateBrush(patternTerrain, Math.max(40, brushSize));
+    
+    ctx.save();
+    ctx.globalAlpha = fillOpacity / 100;
+    ctx.drawImage(brush, x - brushSize / 2, y - brushSize / 2, brushSize, brushSize);
+    ctx.restore();
+  }, [activeTerrain, brushSize, fillOpacity]);
+
+  // Erase terrain
+  const eraseTerrainAt = useCallback((x: number, y: number) => {
+    if (!textureLayerRef.current) return;
+    
+    const ctx = textureLayerRef.current.getContext('2d')!;
+    
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    
+    // Soft eraser
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, brushSize / 2);
+    gradient.addColorStop(0, 'rgba(0,0,0,1)');
+    gradient.addColorStop(0.6, 'rgba(0,0,0,0.8)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+  }, [brushSize]);
+
+  // Interpolate between points for smooth strokes
+  const interpolatePaint = useCallback((x1: number, y1: number, x2: number, y2: number, paintFn: (x: number, y: number) => void) => {
+    const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+    const spacing = Math.max(5, brushSize * 0.15);
+    const steps = Math.max(1, Math.floor(distance / spacing));
+    
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = x1 + (x2 - x1) * t;
+      const y = y1 + (y2 - y1) * t;
+      paintFn(x, y);
+    }
+  }, [brushSize]);
 
   // Save to history for undo/redo
   const saveToHistory = useCallback(() => {
@@ -111,13 +209,26 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
       height,
       backgroundColor: '#1a1a2e',
       selection: true,
+      isDrawingMode: false,
     });
 
-    // Setup brush
-    const brush = new PencilBrush(canvas);
-    brush.color = TERRAIN_CONFIGS[0].color;
-    brush.width = 30;
-    canvas.freeDrawingBrush = brush;
+    // Create texture layer for terrain painting
+    const textureCanvas = document.createElement('canvas');
+    textureCanvas.width = width;
+    textureCanvas.height = height;
+    const textureCtx = textureCanvas.getContext('2d')!;
+    
+    // Fill with ocean texture as default
+    const oceanPattern = patternGenerator.generatePattern('deepWater', 256);
+    const pattern = textureCtx.createPattern(oceanPattern, 'repeat');
+    if (pattern) {
+      textureCtx.fillStyle = pattern;
+      textureCtx.fillRect(0, 0, width, height);
+    }
+    textureLayerRef.current = textureCanvas;
+    
+    // Set texture as background
+    updateBackgroundFromTexture(canvas);
 
     fabricRef.current = canvas;
     setIsReady(true);
@@ -350,22 +461,12 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     const canvas = fabricRef.current;
     if (!canvas) return;
 
-    const isDrawingTool = activeTool === 'brush' || activeTool === 'eraser';
-    const isShapeTool = ['line', 'rect', 'ellipse', 'polygon'].includes(activeTool);
-    
-    canvas.isDrawingMode = isDrawingTool;
+    // Disable fabric drawing mode - we handle brush/eraser ourselves with texture painting
+    canvas.isDrawingMode = false;
     canvas.selection = activeTool === 'select';
 
-    if (canvas.freeDrawingBrush) {
-      if (activeTool === 'eraser') {
-        canvas.freeDrawingBrush.color = '#1a1a2e';
-        canvas.freeDrawingBrush.width = brushSize;
-      } else if (activeTool === 'brush') {
-        const terrain = TERRAIN_CONFIGS.find(t => t.id === activeTerrain);
-        canvas.freeDrawingBrush.color = terrain?.color || '#4a7c59';
-        canvas.freeDrawingBrush.width = brushSize;
-      }
-    }
+    const isDrawingTool = activeTool === 'brush' || activeTool === 'eraser';
+    const isShapeTool = ['line', 'rect', 'ellipse', 'polygon'].includes(activeTool);
 
     // Update cursor
     if (activeTool === 'pan') {
@@ -383,13 +484,7 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     }
   }, [activeTool, activeTerrain, brushSize]);
 
-  // Update brush size
-  useEffect(() => {
-    const canvas = fabricRef.current;
-    if (canvas?.freeDrawingBrush) {
-      canvas.freeDrawingBrush.width = brushSize;
-    }
-  }, [brushSize]);
+  // Brush size effect (no longer needed for freeDrawingBrush)
 
   // Handle zoom
   useEffect(() => {
@@ -491,29 +586,49 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     }
   }, []);
 
-  // Fill tool - fill area with color
+  // Fill tool - fill entire canvas with terrain pattern
   const fillAtPoint = useCallback((x: number, y: number) => {
-    const canvas = fabricRef.current;
-    if (!canvas) return;
-
-    // Create a filled rectangle at click position (simple fill implementation)
-    const terrain = TERRAIN_CONFIGS.find(t => t.id === activeTerrain);
-    const color = terrain?.color || fillColor;
+    if (!textureLayerRef.current) return;
     
-    const fillRect = new Rect({
-      left: x - 50,
-      top: y - 50,
-      width: 100,
-      height: 100,
-      fill: color,
-      opacity: fillOpacity / 100,
-      selectable: true,
-    });
+    const ctx = textureLayerRef.current.getContext('2d')!;
     
-    canvas.add(fillRect);
-    canvas.renderAll();
+    // Map activeTerrain to PatternGenerator terrain type
+    const terrainMap: Record<string, PatternTerrainType> = {
+      'grass': 'grass',
+      'forest': 'forest',
+      'denseForest': 'denseForest',
+      'water': 'water',
+      'deepWater': 'deepWater',
+      'shallowWater': 'water',
+      'mountain': 'mountain',
+      'desert': 'desert',
+      'snow': 'snow',
+      'road': 'road',
+      'swamp': 'swamp',
+      'plains': 'meadow',
+      'tundra': 'tundra',
+      'volcanic': 'volcanic',
+      'dirt': 'dirt',
+      'stone': 'stone',
+      'jungle': 'jungle',
+      'savanna': 'tallGrass',
+      'farmland': 'farmland',
+      'sand': 'sand',
+    };
+    
+    const patternTerrain = terrainMap[activeTerrain] || 'grass';
+    const pattern = patternGenerator.generatePattern(patternTerrain, 256);
+    const canvasPattern = ctx.createPattern(pattern, 'repeat');
+    
+    if (canvasPattern) {
+      ctx.fillStyle = canvasPattern;
+      ctx.fillRect(0, 0, width, height);
+    }
+    
+    updateBackgroundFromTexture();
     saveToHistory();
-  }, [activeTerrain, fillColor, fillOpacity, saveToHistory]);
+    toast.success(`Заливка: ${TERRAIN_CONFIGS.find(t => t.id === activeTerrain)?.label || activeTerrain}`);
+  }, [activeTerrain, width, height, updateBackgroundFromTexture, saveToHistory]);
 
   // Handle canvas click
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -1371,5 +1486,12 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     // Snap rotation
     snapRotation,
     setSnapRotation,
+    // Terrain painting
+    paintTerrainAt,
+    eraseTerrainAt,
+    interpolatePaint,
+    updateBackgroundFromTexture,
+    isTerrainPaintingRef,
+    lastPaintPointRef,
   };
 };
