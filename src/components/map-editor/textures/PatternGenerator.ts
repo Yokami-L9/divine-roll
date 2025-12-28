@@ -970,24 +970,33 @@ export class PatternGenerator {
   }
 
   generateBrush(terrain: TerrainType, size: number): HTMLCanvasElement {
-    const pattern = this.generatePattern(terrain, size);
+    // IMPORTANT: generate the source pattern at a higher resolution than the brush size,
+    // otherwise small brushes look like flat colors.
+    const sourceSize = Math.max(64, Math.min(512, Math.round((size * 3) / 32) * 32));
+    const sourcePattern = this.generatePattern(terrain, sourceSize);
+
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d')!;
-    
-    // Create soft circular mask
-    const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
-    gradient.addColorStop(0, 'white');
-    gradient.addColorStop(0.5, 'white');
-    gradient.addColorStop(0.8, 'rgba(255,255,255,0.6)');
-    gradient.addColorStop(1, 'transparent');
-    
+
+    // Draw the detailed pattern scaled down/up to the brush size
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(sourcePattern, 0, 0, size, size);
+
+    // Apply soft circular alpha mask
+    ctx.globalCompositeOperation = 'destination-in';
+    const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.55, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.82, 'rgba(255,255,255,0.6)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, size, size);
-    ctx.globalCompositeOperation = 'source-in';
-    ctx.drawImage(pattern, 0, 0);
-    
+
+    // Restore default composite op for callers that reuse this context
+    ctx.globalCompositeOperation = 'source-over';
+
     return canvas;
   }
 

@@ -104,9 +104,14 @@ function TerrainPreview({ terrain, size = 48 }: { terrain: TerrainType; size?: n
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    
+
     const ctx = canvasRef.current.getContext('2d')!;
-    const pattern = patternGenerator.generatePattern(terrain, size);
+    // Render a higher-resolution pattern and scale it down so previews match real brush detail.
+    const srcSize = Math.max(128, Math.round((size * 3) / 32) * 32);
+    const pattern = patternGenerator.generatePattern(terrain, srcSize);
+
+    ctx.clearRect(0, 0, size, size);
+    ctx.imageSmoothingEnabled = true;
     ctx.drawImage(pattern, 0, 0, size, size);
     setLoaded(true);
   }, [terrain, size]);
