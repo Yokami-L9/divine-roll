@@ -4,6 +4,7 @@ import { useLayers } from "./useLayers";
 import { MapToolbar } from "./MapToolbar";
 import { LayersPanel } from "./LayersPanel";
 import { Minimap } from "./Minimap";
+import { InkarnateBrushPanel } from "./InkarnateBrushPanel";
 import type { MapState } from "./types";
 
 interface MapCanvasProps {
@@ -107,6 +108,12 @@ export const MapCanvas = ({
     updateBackgroundFromTexture,
     isTerrainPaintingRef,
     lastPaintPointRef,
+    // Inkarnate texture system
+    selectedTexture,
+    setSelectedTexture,
+    brushSettings,
+    setBrushSettings,
+    fillWithSelectedTexture,
   } = useMapCanvas({
     width,
     height,
