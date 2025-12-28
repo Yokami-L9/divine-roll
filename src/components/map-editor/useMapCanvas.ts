@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import type { MapTemplate } from './MapTemplates';
 import type { Asset } from './AssetLibrary';
 import type { PathPoint, MapPath } from './PathTool';
-import { patternGenerator, TerrainType as PatternTerrainType } from './textures/PatternGenerator';
+import { textureManager, BrushSettings } from './textures/TextureManager';
 
 interface UseMapCanvasOptions {
   width: number;
@@ -53,9 +53,20 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
   // Snap rotation angles
   const [snapRotation, setSnapRotation] = useState(false);
   
+  // Inkarnate-style brush settings
+  const [selectedTexture, setSelectedTexture] = useState<string>('grass');
+  const [brushSettings, setBrushSettings] = useState<BrushSettings>({
+    size: 100,
+    opacity: 100,
+    softness: 100,
+    textureScale: 100,
+    rotation: 0,
+  });
+  
   // Terrain painting refs
   const isTerrainPaintingRef = useRef(false);
   const lastPaintPointRef = useRef<{ x: number; y: number } | null>(null);
+  const texturesLoadedRef = useRef(false);
   
   const clipboardRef = useRef<FabricObject[]>([]);
   const measurePointRef = useRef<{ x: number; y: number } | null>(null);
@@ -99,44 +110,20 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     });
   }, []);
 
-  // Paint terrain with pattern
+  // Paint terrain with real textures
   const paintTerrainAt = useCallback((x: number, y: number) => {
-    if (!textureLayerRef.current) return;
+    if (!textureLayerRef.current || !selectedTexture) return;
+    
+    const stamp = textureManager.generateBrushStamp(selectedTexture, brushSettings);
+    if (!stamp) return;
     
     const ctx = textureLayerRef.current.getContext('2d')!;
-    
-    // Map activeTerrain to PatternGenerator terrain type
-    const terrainMap: Record<string, PatternTerrainType> = {
-      'grass': 'grass',
-      'forest': 'forest',
-      'denseForest': 'denseForest',
-      'water': 'water',
-      'deepWater': 'deepWater',
-      'shallowWater': 'water',
-      'mountain': 'mountain',
-      'desert': 'desert',
-      'snow': 'snow',
-      'road': 'road',
-      'swamp': 'swamp',
-      'plains': 'meadow',
-      'tundra': 'tundra',
-      'volcanic': 'volcanic',
-      'dirt': 'dirt',
-      'stone': 'stone',
-      'jungle': 'jungle',
-      'savanna': 'tallGrass',
-      'farmland': 'farmland',
-      'sand': 'sand',
-    };
-    
-    const patternTerrain = terrainMap[activeTerrain] || 'grass';
-    const brush = patternGenerator.generateBrush(patternTerrain, Math.max(40, brushSize));
+    const halfSize = brushSettings.size / 2;
     
     ctx.save();
-    ctx.globalAlpha = fillOpacity / 100;
-    ctx.drawImage(brush, x - brushSize / 2, y - brushSize / 2, brushSize, brushSize);
+    ctx.drawImage(stamp, x - halfSize, y - halfSize);
     ctx.restore();
-  }, [activeTerrain, brushSize, fillOpacity]);
+  }, [selectedTexture, brushSettings]);
 
   // Erase terrain
   const eraseTerrainAt = useCallback((x: number, y: number) => {
@@ -218,14 +205,19 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     textureCanvas.height = height;
     const textureCtx = textureCanvas.getContext('2d')!;
     
-    // Fill with ocean texture as default
-    const oceanPattern = patternGenerator.generatePattern('deepWater', 256);
-    const pattern = textureCtx.createPattern(oceanPattern, 'repeat');
-    if (pattern) {
-      textureCtx.fillStyle = pattern;
-      textureCtx.fillRect(0, 0, width, height);
-    }
+    // Fill with water texture as default (async load)
+    textureCtx.fillStyle = '#1a3a5c';
+    textureCtx.fillRect(0, 0, width, height);
     textureLayerRef.current = textureCanvas;
+    
+    // Load textures and fill with water
+    textureManager.loadTexture('water').then((img) => {
+      if (img && textureLayerRef.current) {
+        const ctx = textureLayerRef.current.getContext('2d')!;
+        textureManager.fillWithTexture(ctx, width, height, 'water', 100);
+        updateBackgroundFromTexture(canvas);
+      }
+    });
     
     // Set texture as background
     updateBackgroundFromTexture(canvas);
@@ -586,49 +578,22 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     }
   }, []);
 
-  // Fill tool - fill entire canvas with terrain pattern
-  const fillAtPoint = useCallback((x: number, y: number) => {
-    if (!textureLayerRef.current) return;
+  // Fill tool - fill entire canvas with selected texture
+  const fillWithSelectedTexture = useCallback(() => {
+    if (!textureLayerRef.current || !selectedTexture) return;
     
     const ctx = textureLayerRef.current.getContext('2d')!;
-    
-    // Map activeTerrain to PatternGenerator terrain type
-    const terrainMap: Record<string, PatternTerrainType> = {
-      'grass': 'grass',
-      'forest': 'forest',
-      'denseForest': 'denseForest',
-      'water': 'water',
-      'deepWater': 'deepWater',
-      'shallowWater': 'water',
-      'mountain': 'mountain',
-      'desert': 'desert',
-      'snow': 'snow',
-      'road': 'road',
-      'swamp': 'swamp',
-      'plains': 'meadow',
-      'tundra': 'tundra',
-      'volcanic': 'volcanic',
-      'dirt': 'dirt',
-      'stone': 'stone',
-      'jungle': 'jungle',
-      'savanna': 'tallGrass',
-      'farmland': 'farmland',
-      'sand': 'sand',
-    };
-    
-    const patternTerrain = terrainMap[activeTerrain] || 'grass';
-    const pattern = patternGenerator.generatePattern(patternTerrain, 256);
-    const canvasPattern = ctx.createPattern(pattern, 'repeat');
-    
-    if (canvasPattern) {
-      ctx.fillStyle = canvasPattern;
-      ctx.fillRect(0, 0, width, height);
-    }
+    textureManager.fillWithTexture(ctx, width, height, selectedTexture, brushSettings.textureScale);
     
     updateBackgroundFromTexture();
     saveToHistory();
-    toast.success(`Заливка: ${TERRAIN_CONFIGS.find(t => t.id === activeTerrain)?.label || activeTerrain}`);
-  }, [activeTerrain, width, height, updateBackgroundFromTexture, saveToHistory]);
+    toast.success(`Заливка: ${selectedTexture}`);
+  }, [selectedTexture, width, height, brushSettings.textureScale, updateBackgroundFromTexture, saveToHistory]);
+
+  // Fill at point (click handler)
+  const fillAtPoint = useCallback((x: number, y: number) => {
+    fillWithSelectedTexture();
+  }, [fillWithSelectedTexture]);
 
   // Handle canvas click
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -1493,5 +1458,11 @@ export const useMapCanvas = ({ width, height, initialData, onSave }: UseMapCanva
     updateBackgroundFromTexture,
     isTerrainPaintingRef,
     lastPaintPointRef,
+    // Inkarnate-style texture system
+    selectedTexture,
+    setSelectedTexture,
+    brushSettings,
+    setBrushSettings,
+    fillWithSelectedTexture,
   };
 };
