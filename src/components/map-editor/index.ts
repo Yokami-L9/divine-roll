@@ -1,7 +1,5 @@
+// Map Editor - Main Export
+
 export { MapCanvas } from './MapCanvas';
-export { MapToolbar } from './MapToolbar';
-export { LayersPanel } from './LayersPanel';
-export { Minimap } from './Minimap';
-export { useMapCanvas } from './useMapCanvas';
-export { useLayers } from './useLayers';
-export * from './types';
+export { useMapEditor } from './hooks/useMapEditor';
+export type { MapState, MapMode, ToolType, TerrainType, BrushSettings } from './types';

@@ -1,158 +1,297 @@
-export type ToolType = 'select' | 'pan' | 'brush' | 'eraser' | 'marker' | 'text' | 'line' | 'rect' | 'ellipse' | 'polygon' | 'fill' | 'measure' | 'eyedropper' | 'path' | 'asset' | 'stamp';
+// Map Editor Types - Professional Fantasy Map Editor
 
-export type ShapeType = 'line' | 'rect' | 'ellipse' | 'polygon';
+export type MapMode = 'world' | 'regional' | 'battle';
+
+export type ToolType = 
+  | 'select' 
+  | 'pan' 
+  | 'brush' 
+  | 'eraser' 
+  | 'fill'
+  | 'eyedropper'
+  | 'path'
+  | 'text'
+  | 'asset'
+  | 'elevation'
+  | 'fogOfWar';
 
 export type TerrainType = 
-  | 'grass' 
-  | 'forest' 
-  | 'water' 
-  | 'mountain' 
-  | 'desert' 
-  | 'snow' 
-  | 'road' 
-  | 'swamp'
   | 'deepWater'
   | 'shallowWater'
-  | 'denseForest'
-  | 'plains'
+  | 'coastFoam'
+  | 'grass'
+  | 'forestFloor'
+  | 'jungleFloor'
+  | 'desert'
+  | 'rock'
+  | 'snow'
   | 'tundra'
+  | 'swamp'
   | 'volcanic'
-  | 'dirt'
-  | 'stone'
-  | 'jungle'
-  | 'savanna'
-  | 'farmland'
-  | 'sand';
+  | 'corrupted'
+  | 'road'
+  | 'farmland';
 
-export type MarkerType = 'city' | 'village' | 'camp' | 'dungeon' | 'ruins' | 'tower' | 'cave' | 'port';
-
-export interface ObjectNote {
-  id: string;
-  objectId: string;
-  text: string;
-  createdAt: string;
+export interface TerrainConfig {
+  id: TerrainType;
+  name: string;
+  category: 'water' | 'land' | 'special';
+  baseColor: string;
+  textureUrl?: string;
 }
 
+export const TERRAIN_CONFIGS: TerrainConfig[] = [
+  // Water
+  { id: 'deepWater', name: 'Глубокая вода', category: 'water', baseColor: '#0a3d62' },
+  { id: 'shallowWater', name: 'Мелководье', category: 'water', baseColor: '#3498db' },
+  { id: 'coastFoam', name: 'Прибрежная пена', category: 'water', baseColor: '#74b9ff' },
+  
+  // Land
+  { id: 'grass', name: 'Трава', category: 'land', baseColor: '#27ae60' },
+  { id: 'forestFloor', name: 'Лесная почва', category: 'land', baseColor: '#1e5631' },
+  { id: 'jungleFloor', name: 'Джунгли', category: 'land', baseColor: '#145a32' },
+  { id: 'desert', name: 'Пустыня', category: 'land', baseColor: '#d4a574' },
+  { id: 'rock', name: 'Камень', category: 'land', baseColor: '#6c757d' },
+  { id: 'snow', name: 'Снег', category: 'land', baseColor: '#ecf0f1' },
+  { id: 'tundra', name: 'Тундра', category: 'land', baseColor: '#95a5a6' },
+  { id: 'swamp', name: 'Болото', category: 'land', baseColor: '#556b2f' },
+  { id: 'farmland', name: 'Поля', category: 'land', baseColor: '#8B7355' },
+  { id: 'road', name: 'Дорога', category: 'land', baseColor: '#5d4e37' },
+  
+  // Special
+  { id: 'volcanic', name: 'Вулканическая', category: 'special', baseColor: '#2d2320' },
+  { id: 'corrupted', name: 'Порченая', category: 'special', baseColor: '#4a1c4a' },
+];
+
 export interface BrushSettings {
-  size: number;
-  opacity: number;
-  hardness: number;
-  spacing: number;
-  terrain: TerrainType;
+  size: number;        // 1-500
+  opacity: number;     // 0-1
+  hardness: number;    // 0-1 (softness = 1-hardness)
+  flow: number;        // 0-1
+  spacing: number;     // 0.01-1
+  jitter: number;      // 0-1
+  textureScale: number; // 0.5-4
+  rotation: number;    // 0-360
+  randomRotation: boolean;
 }
 
 export interface PathPoint {
   x: number;
   y: number;
+  pressure?: number;
 }
 
 export interface MapPath {
   id: string;
+  type: 'road' | 'river' | 'border' | 'custom';
   points: PathPoint[];
-  color: string;
   width: number;
+  color: string;
   style: 'solid' | 'dashed' | 'dotted';
-  label?: string;
+  startCap: 'round' | 'flat' | 'arrow';
+  endCap: 'round' | 'flat' | 'arrow';
 }
 
-export interface MarkerData {
+export interface MapAsset {
   id: string;
+  assetId: string;
   x: number;
   y: number;
-  type: MarkerType;
-  label: string;
-  icon: string;
+  scale: number;
+  rotation: number;
+  flipX: boolean;
+  tint?: string;
+  brightness: number;
+  contrast: number;
+  shadowIntensity: number;
+  zIndex: number;
 }
 
-export interface HistoryState {
-  canvasData: string;
-  paths: MapPath[];
-  markers: MarkerData[];
-}
-
-export interface TerrainConfig {
-  id: TerrainType;
-  label: string;
+export interface MapLabel {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  fontFamily: string;
   color: string;
-  category: 'land' | 'water' | 'special';
-  pattern?: string;
-}
-
-export interface MarkerConfig {
-  id: MarkerType;
-  label: string;
-  icon: string;
-  color: string;
+  outlineColor?: string;
+  outlineWidth: number;
+  curvature: number;
+  letterSpacing: number;
+  rotation: number;
+  glow?: string;
+  shadow?: boolean;
 }
 
 export interface MapLayer {
   id: string;
   name: string;
+  type: 'terrain' | 'elevation' | 'assets' | 'paths' | 'labels' | 'effects' | 'grid' | 'fog';
   visible: boolean;
   locked: boolean;
   opacity: number;
-  objects: string[]; // fabric object IDs
+  order: number;
+}
+
+export interface ViewportState {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+export interface GridSettings {
+  enabled: boolean;
+  type: 'square' | 'hex';
+  size: number;
+  opacity: number;
+  color: string;
+  snap: boolean;
+}
+
+export interface EffectSettings {
+  fogOfWar: {
+    enabled: boolean;
+    opacity: number;
+    color: string;
+  };
+  paperTexture: boolean;
+  vignette: boolean;
+  colorGrading: {
+    enabled: boolean;
+    warmth: number;
+    saturation: number;
+    contrast: number;
+  };
+}
+
+export interface TerrainStroke {
+  id: string;
+  terrain: TerrainType;
+  points: PathPoint[];
+  brushSettings: BrushSettings;
+  timestamp: number;
 }
 
 export interface MapState {
+  id: string;
+  name: string;
+  mode: MapMode;
   width: number;
   height: number;
-  backgroundColor: string;
+  
+  // Data layers
+  terrainStrokes: TerrainStroke[];
+  elevationData: Uint8Array | null;
+  assets: MapAsset[];
+  paths: MapPath[];
+  labels: MapLabel[];
+  fogOfWarMask: Uint8Array | null;
+  
+  // Settings
   layers: MapLayer[];
-  canvasData: object;
+  gridSettings: GridSettings;
+  effects: EffectSettings;
+  backgroundColor: string;
+  
+  // History
+  version: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export const TERRAIN_CONFIGS: TerrainConfig[] = [
-  // Land terrains
-  { id: 'grass', label: 'Трава', color: '#4a7c59', category: 'land' },
-  { id: 'plains', label: 'Равнины', color: '#8cb369', category: 'land' },
-  { id: 'forest', label: 'Лес', color: '#2d5a3d', category: 'land' },
-  { id: 'denseForest', label: 'Густой лес', color: '#1a4025', category: 'land' },
-  { id: 'jungle', label: 'Джунгли', color: '#1e5a23', category: 'land' },
-  { id: 'savanna', label: 'Саванна', color: '#b4a060', category: 'land' },
-  { id: 'farmland', label: 'Поля', color: '#826440', category: 'land' },
-  { id: 'mountain', label: 'Горы', color: '#78716c', category: 'land' },
-  { id: 'stone', label: 'Камень', color: '#6e6a65', category: 'land' },
-  { id: 'dirt', label: 'Земля', color: '#785a3c', category: 'land' },
-  { id: 'road', label: 'Дорога', color: '#5f5041', category: 'land' },
-  { id: 'sand', label: 'Песок', color: '#d2b98c', category: 'land' },
-  { id: 'desert', label: 'Пустыня', color: '#dcb470', category: 'land' },
-  
-  // Cold terrains
-  { id: 'snow', label: 'Снег', color: '#f0f5fa', category: 'land' },
-  { id: 'tundra', label: 'Тундра', color: '#aab4af', category: 'land' },
-  
-  // Water terrains
-  { id: 'water', label: 'Вода', color: '#2366a0', category: 'water' },
-  { id: 'shallowWater', label: 'Мелководье', color: '#4196b4', category: 'water' },
-  { id: 'deepWater', label: 'Глубокая вода', color: '#0f3264', category: 'water' },
-  { id: 'swamp', label: 'Болото', color: '#374b32', category: 'water' },
-  
-  // Special terrains
-  { id: 'volcanic', label: 'Вулканическая', color: '#2d2320', category: 'special' },
+export interface HistoryEntry {
+  id: string;
+  type: 'stroke' | 'asset' | 'path' | 'label' | 'delete' | 'transform';
+  data: unknown;
+  timestamp: number;
+}
+
+// Asset catalog types
+export interface AssetCategory {
+  id: string;
+  name: string;
+  icon: string;
+}
+
+export interface AssetDefinition {
+  id: string;
+  name: string;
+  categoryId: string;
+  url: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+  tags: string[];
+}
+
+// Default values
+export const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
+  size: 50,
+  opacity: 1,
+  hardness: 0.7,
+  flow: 0.8,
+  spacing: 0.1,
+  jitter: 0.05,
+  textureScale: 1,
+  rotation: 0,
+  randomRotation: true,
+};
+
+export const DEFAULT_GRID_SETTINGS: GridSettings = {
+  enabled: false,
+  type: 'square',
+  size: 50,
+  opacity: 0.3,
+  color: '#ffffff',
+  snap: false,
+};
+
+export const DEFAULT_EFFECT_SETTINGS: EffectSettings = {
+  fogOfWar: {
+    enabled: false,
+    opacity: 0.8,
+    color: '#1a1a2e',
+  },
+  paperTexture: true,
+  vignette: true,
+  colorGrading: {
+    enabled: true,
+    warmth: 0.1,
+    saturation: 1.1,
+    contrast: 1.05,
+  },
+};
+
+export const DEFAULT_LAYERS: MapLayer[] = [
+  { id: 'terrain', name: 'Terrain', type: 'terrain', visible: true, locked: false, opacity: 1, order: 0 },
+  { id: 'elevation', name: 'Elevation', type: 'elevation', visible: true, locked: false, opacity: 1, order: 1 },
+  { id: 'paths', name: 'Paths', type: 'paths', visible: true, locked: false, opacity: 1, order: 2 },
+  { id: 'assets', name: 'Assets', type: 'assets', visible: true, locked: false, opacity: 1, order: 3 },
+  { id: 'labels', name: 'Labels', type: 'labels', visible: true, locked: false, opacity: 1, order: 4 },
+  { id: 'grid', name: 'Grid', type: 'grid', visible: false, locked: true, opacity: 1, order: 5 },
+  { id: 'fog', name: 'Fog of War', type: 'fog', visible: false, locked: false, opacity: 1, order: 6 },
 ];
 
-export const MARKER_CONFIGS: MarkerConfig[] = [
-  { id: 'city', label: 'Город', icon: '🏰', color: '#eab308' },
-  { id: 'village', label: 'Деревня', icon: '🏠', color: '#84cc16' },
-  { id: 'camp', label: 'Лагерь', icon: '⛺', color: '#f97316' },
-  { id: 'dungeon', label: 'Подземелье', icon: '🗝️', color: '#6366f1' },
-  { id: 'ruins', label: 'Руины', icon: '🏛️', color: '#78716c' },
-  { id: 'tower', label: 'Башня', icon: '🗼', color: '#8b5cf6' },
-  { id: 'cave', label: 'Пещера', icon: '🕳️', color: '#52525b' },
-  { id: 'port', label: 'Порт', icon: '⚓', color: '#0ea5e9' },
-];
-
-// Additional marker types
-export type IconMarkerType = 'castle' | 'town' | 'forest_icon' | 'mountain_icon' | 'lake' | 'bridge' | 'temple' | 'mine';
-
-export const ICON_MARKERS: { id: IconMarkerType; label: string; svg: string; color: string }[] = [
-  { id: 'castle', label: 'Замок', svg: 'M3 21V7l9-4 9 4v14H3zm2-2h14V8.2l-7-3.1-7 3.1V19z', color: '#eab308' },
-  { id: 'town', label: 'Городок', svg: 'M4 21V10.1l8-4.8 8 4.8V21H4zm2-2h4v-4h4v4h4v-8.1l-6-3.6-6 3.6V19z', color: '#a855f7' },
-  { id: 'forest_icon', label: 'Лес', svg: 'M12 2L7 10h2l-3 6h3l-3 6h14l-3-6h3l-3-6h2L12 2z', color: '#22c55e' },
-  { id: 'mountain_icon', label: 'Гора', svg: 'M12 4l-8 16h16L12 4zm0 5l4 8H8l4-8z', color: '#78716c' },
-  { id: 'lake', label: 'Озеро', svg: 'M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8z', color: '#0ea5e9' },
-  { id: 'bridge', label: 'Мост', svg: 'M4 12h16M6 12c0-2 2-4 6-4s6 2 6 4M4 16h16', color: '#78716c' },
-  { id: 'temple', label: 'Храм', svg: 'M12 2L3 9v2h2v10h14V11h2V9L12 2zm0 3.5L18 9H6l6-3.5z', color: '#f59e0b' },
-  { id: 'mine', label: 'Шахта', svg: 'M12 2L6 12h12L12 2zm-6 12v6h12v-6H6z', color: '#52525b' },
-];
+export function createEmptyMapState(name: string, mode: MapMode, width = 4096, height = 4096): MapState {
+  return {
+    id: crypto.randomUUID(),
+    name,
+    mode,
+    width,
+    height,
+    terrainStrokes: [],
+    elevationData: null,
+    assets: [],
+    paths: [],
+    labels: [],
+    fogOfWarMask: null,
+    layers: [...DEFAULT_LAYERS],
+    gridSettings: { ...DEFAULT_GRID_SETTINGS },
+    effects: { ...DEFAULT_EFFECT_SETTINGS },
+    backgroundColor: '#0a3d62', // Deep ocean
+    version: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
