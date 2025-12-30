@@ -4,7 +4,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Separator } from '@/components/ui/separator';
 import { 
   MousePointer2, Hand, Brush, Eraser, PaintBucket, Pipette,
-  Undo2, Redo2, ZoomIn, ZoomOut, Maximize2, Save, Download, Trash2
+  Undo2, Redo2, ZoomIn, ZoomOut, Save, Download, Trash2,
+  Route, Type, Image
 } from 'lucide-react';
 import { ToolType } from '../types';
 
@@ -24,13 +25,16 @@ interface EditorToolbarProps {
   onClear: () => void;
 }
 
-const tools: { id: ToolType; icon: React.ReactNode; label: string }[] = [
-  { id: 'select', icon: <MousePointer2 className="w-4 h-4" />, label: 'Выделение (V)' },
-  { id: 'pan', icon: <Hand className="w-4 h-4" />, label: 'Перемещение (Space)' },
-  { id: 'brush', icon: <Brush className="w-4 h-4" />, label: 'Кисть (B)' },
-  { id: 'eraser', icon: <Eraser className="w-4 h-4" />, label: 'Ластик (E)' },
-  { id: 'fill', icon: <PaintBucket className="w-4 h-4" />, label: 'Заливка (G)' },
-  { id: 'eyedropper', icon: <Pipette className="w-4 h-4" />, label: 'Пипетка (I)' },
+const tools: { id: ToolType; icon: React.ReactNode; label: string; shortcut: string }[] = [
+  { id: 'select', icon: <MousePointer2 className="w-4 h-4" />, label: 'Выделение', shortcut: 'V' },
+  { id: 'pan', icon: <Hand className="w-4 h-4" />, label: 'Перемещение', shortcut: 'Space' },
+  { id: 'brush', icon: <Brush className="w-4 h-4" />, label: 'Кисть', shortcut: 'B' },
+  { id: 'eraser', icon: <Eraser className="w-4 h-4" />, label: 'Ластик', shortcut: 'E' },
+  { id: 'fill', icon: <PaintBucket className="w-4 h-4" />, label: 'Заливка', shortcut: 'G' },
+  { id: 'eyedropper', icon: <Pipette className="w-4 h-4" />, label: 'Пипетка', shortcut: 'I' },
+  { id: 'path', icon: <Route className="w-4 h-4" />, label: 'Пути', shortcut: 'P' },
+  { id: 'text', icon: <Type className="w-4 h-4" />, label: 'Текст', shortcut: 'T' },
+  { id: 'asset', icon: <Image className="w-4 h-4" />, label: 'Объекты', shortcut: 'A' },
 ];
 
 export function EditorToolbar({
@@ -75,7 +79,9 @@ export function EditorToolbar({
                   {tool.icon}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{tool.label}</TooltipContent>
+              <TooltipContent>
+                {tool.label} ({tool.shortcut})
+              </TooltipContent>
             </Tooltip>
           ))}
         </div>
