@@ -37,7 +37,6 @@ export interface TerrainConfig {
   name: string;
   category: 'water' | 'land' | 'special';
   baseColor: string;
-  textureUrl?: string;
 }
 
 export const TERRAIN_CONFIGS: TerrainConfig[] = [
@@ -66,19 +65,16 @@ export const TERRAIN_CONFIGS: TerrainConfig[] = [
 export interface BrushSettings {
   size: number;        // 1-500
   opacity: number;     // 0-1
-  hardness: number;    // 0-1 (softness = 1-hardness)
+  hardness: number;    // 0-1
   flow: number;        // 0-1
   spacing: number;     // 0.01-1
   jitter: number;      // 0-1
-  textureScale: number; // 0.5-4
-  rotation: number;    // 0-360
   randomRotation: boolean;
 }
 
 export interface PathPoint {
   x: number;
   y: number;
-  pressure?: number;
 }
 
 export interface MapPath {
@@ -88,8 +84,6 @@ export interface MapPath {
   width: number;
   color: string;
   style: 'solid' | 'dashed' | 'dotted';
-  startCap: 'round' | 'flat' | 'arrow';
-  endCap: 'round' | 'flat' | 'arrow';
 }
 
 export interface MapAsset {
@@ -100,10 +94,6 @@ export interface MapAsset {
   scale: number;
   rotation: number;
   flipX: boolean;
-  tint?: string;
-  brightness: number;
-  contrast: number;
-  shadowIntensity: number;
   zIndex: number;
 }
 
@@ -117,11 +107,7 @@ export interface MapLabel {
   color: string;
   outlineColor?: string;
   outlineWidth: number;
-  curvature: number;
-  letterSpacing: number;
   rotation: number;
-  glow?: string;
-  shadow?: boolean;
 }
 
 export interface MapLayer {
@@ -182,11 +168,9 @@ export interface MapState {
   
   // Data layers
   terrainStrokes: TerrainStroke[];
-  elevationData: Uint8Array | null;
   assets: MapAsset[];
   paths: MapPath[];
   labels: MapLabel[];
-  fogOfWarMask: Uint8Array | null;
   
   // Settings
   layers: MapLayer[];
@@ -233,8 +217,6 @@ export const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   flow: 0.8,
   spacing: 0.1,
   jitter: 0.05,
-  textureScale: 1,
-  rotation: 0,
   randomRotation: true,
 };
 
@@ -265,12 +247,11 @@ export const DEFAULT_EFFECT_SETTINGS: EffectSettings = {
 
 export const DEFAULT_LAYERS: MapLayer[] = [
   { id: 'terrain', name: 'Terrain', type: 'terrain', visible: true, locked: false, opacity: 1, order: 0 },
-  { id: 'elevation', name: 'Elevation', type: 'elevation', visible: true, locked: false, opacity: 1, order: 1 },
-  { id: 'paths', name: 'Paths', type: 'paths', visible: true, locked: false, opacity: 1, order: 2 },
-  { id: 'assets', name: 'Assets', type: 'assets', visible: true, locked: false, opacity: 1, order: 3 },
-  { id: 'labels', name: 'Labels', type: 'labels', visible: true, locked: false, opacity: 1, order: 4 },
-  { id: 'grid', name: 'Grid', type: 'grid', visible: false, locked: true, opacity: 1, order: 5 },
-  { id: 'fog', name: 'Fog of War', type: 'fog', visible: false, locked: false, opacity: 1, order: 6 },
+  { id: 'paths', name: 'Paths', type: 'paths', visible: true, locked: false, opacity: 1, order: 1 },
+  { id: 'assets', name: 'Assets', type: 'assets', visible: true, locked: false, opacity: 1, order: 2 },
+  { id: 'labels', name: 'Labels', type: 'labels', visible: true, locked: false, opacity: 1, order: 3 },
+  { id: 'grid', name: 'Grid', type: 'grid', visible: false, locked: true, opacity: 1, order: 4 },
+  { id: 'fog', name: 'Fog of War', type: 'fog', visible: false, locked: false, opacity: 1, order: 5 },
 ];
 
 export function createEmptyMapState(name: string, mode: MapMode, width = 4096, height = 4096): MapState {
@@ -281,15 +262,13 @@ export function createEmptyMapState(name: string, mode: MapMode, width = 4096, h
     width,
     height,
     terrainStrokes: [],
-    elevationData: null,
     assets: [],
     paths: [],
     labels: [],
-    fogOfWarMask: null,
     layers: [...DEFAULT_LAYERS],
     gridSettings: { ...DEFAULT_GRID_SETTINGS },
     effects: { ...DEFAULT_EFFECT_SETTINGS },
-    backgroundColor: '#0a3d62', // Deep ocean
+    backgroundColor: '#0a3d62',
     version: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
