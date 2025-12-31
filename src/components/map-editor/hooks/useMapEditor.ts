@@ -9,6 +9,10 @@ import {
   TerrainStroke,
   PathPoint,
   MapMode,
+  MapPath,
+  MapLabel,
+  MapAsset,
+  MapLayer,
   DEFAULT_BRUSH_SETTINGS,
   createEmptyMapState,
   ViewportState
@@ -51,13 +55,16 @@ export function useMapEditor({
   // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
   const currentStrokeRef = useRef<PathPoint[]>([]);
+  
+  // Path drawing state
+  const [currentPath, setCurrentPath] = useState<PathPoint[]>([]);
+  const [isDrawingPath, setIsDrawingPath] = useState(false);
 
   // Refs for engines
   const terrainRendererRef = useRef<TerrainRenderer | null>(null);
   const viewportManagerRef = useRef<ViewportManager | null>(null);
   const historyManagerRef = useRef<HistoryManager | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
-  const terrainCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Initialize engines
   useEffect(() => {
@@ -121,7 +128,6 @@ export function useMapEditor({
     const canvasPoint = screenToCanvas(screenX, screenY);
 
     if (activeTool === 'pan' || e.button === 1) {
-      // Middle mouse or pan tool
       viewportManagerRef.current?.stopInertia();
       return;
     }
@@ -130,7 +136,6 @@ export function useMapEditor({
       setIsDrawing(true);
       currentStrokeRef.current = [{ x: canvasPoint.x, y: canvasPoint.y }];
       
-      // Immediate preview stroke
       const renderer = terrainRendererRef.current;
       if (renderer) {
         const previewStroke: TerrainStroke = {
@@ -148,7 +153,16 @@ export function useMapEditor({
         }
       }
     }
-  }, [activeTool, selectedTerrain, brushSettings, screenToCanvas, mapState.backgroundColor]);
+    
+    if (activeTool === 'path') {
+      if (!isDrawingPath) {
+        setIsDrawingPath(true);
+        setCurrentPath([{ x: canvasPoint.x, y: canvasPoint.y }]);
+      } else {
+        setCurrentPath(prev => [...prev, { x: canvasPoint.x, y: canvasPoint.y }]);
+      }
+    }
+  }, [activeTool, selectedTerrain, brushSettings, screenToCanvas, mapState.backgroundColor, isDrawingPath]);
 
   // Handle mouse move
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -160,7 +174,6 @@ export function useMapEditor({
     const canvasPoint = screenToCanvas(screenX, screenY);
 
     if ((activeTool === 'pan' || e.buttons === 4) && e.buttons > 0) {
-      // Pan mode
       viewportManagerRef.current?.pan(e.movementX, e.movementY);
       setViewport(viewportManagerRef.current?.getState() ?? { x: 0, y: 0, zoom: 1 });
       return;
@@ -169,7 +182,6 @@ export function useMapEditor({
     if (isDrawing && (activeTool === 'brush' || activeTool === 'eraser')) {
       currentStrokeRef.current.push({ x: canvasPoint.x, y: canvasPoint.y });
       
-      // Render stroke incrementally
       const renderer = terrainRendererRef.current;
       if (renderer && currentStrokeRef.current.length >= 2) {
         const lastTwo = currentStrokeRef.current.slice(-2);
@@ -201,7 +213,6 @@ export function useMapEditor({
         timestamp: Date.now()
       };
 
-      // Add to state
       setMapState(prev => ({
         ...prev,
         terrainStrokes: activeTool === 'brush' 
@@ -210,7 +221,6 @@ export function useMapEditor({
         updatedAt: new Date().toISOString()
       }));
 
-      // Add to history
       historyManagerRef.current?.push({
         type: 'stroke',
         data: { stroke: newStroke, tool: activeTool }
@@ -258,9 +268,7 @@ export function useMapEditor({
     const renderer = terrainRendererRef.current;
     if (!renderer) return;
 
-    // Re-render all strokes except the undone one
     renderer.clear(mapState.backgroundColor);
-    const undoStack = historyManagerRef.current?.getUndoStack() ?? [];
     
     setMapState(prev => {
       const newStrokes = prev.terrainStrokes.slice(0, -1);
@@ -294,7 +302,7 @@ export function useMapEditor({
     renderer.fillTerrain(terrain);
     setMapState(prev => ({
       ...prev,
-      backgroundColor: '#000000', // Will be covered by fill
+      backgroundColor: '#000000',
       updatedAt: new Date().toISOString()
     }));
   }, []);
@@ -315,6 +323,166 @@ export function useMapEditor({
     }));
     historyManagerRef.current?.clear();
   }, [mapState.backgroundColor]);
+
+  // Add path
+  const addPath = useCallback((pathData: Omit<MapPath, 'id'>) => {
+    const newPath: MapPath = {
+      ...pathData,
+      id: crypto.randomUUID()
+    };
+    
+    setMapState(prev => ({
+      ...prev,
+      paths: [...prev.paths, newPath],
+      updatedAt: new Date().toISOString()
+    }));
+    
+    historyManagerRef.current?.push({
+      type: 'path',
+      data: newPath
+    });
+    
+    return newPath;
+  }, []);
+
+  // Finish current path
+  const finishPath = useCallback((pathType: MapPath['type'], pathWidth: number, pathColor: string) => {
+    if (currentPath.length < 2) {
+      setCurrentPath([]);
+      setIsDrawingPath(false);
+      return;
+    }
+    
+    addPath({
+      type: pathType,
+      points: currentPath,
+      width: pathWidth,
+      color: pathColor,
+      style: 'solid'
+    });
+    
+    setCurrentPath([]);
+    setIsDrawingPath(false);
+  }, [currentPath, addPath]);
+
+  // Cancel current path
+  const cancelPath = useCallback(() => {
+    setCurrentPath([]);
+    setIsDrawingPath(false);
+  }, []);
+
+  // Add label
+  const addLabel = useCallback((labelData: Omit<MapLabel, 'id'>) => {
+    const newLabel: MapLabel = {
+      ...labelData,
+      id: crypto.randomUUID()
+    };
+    
+    setMapState(prev => ({
+      ...prev,
+      labels: [...prev.labels, newLabel],
+      updatedAt: new Date().toISOString()
+    }));
+    
+    historyManagerRef.current?.push({
+      type: 'label',
+      data: newLabel
+    });
+    
+    return newLabel;
+  }, []);
+
+  // Add asset
+  const addAsset = useCallback((assetData: Omit<MapAsset, 'id'>) => {
+    const newAsset: MapAsset = {
+      ...assetData,
+      id: crypto.randomUUID()
+    };
+    
+    setMapState(prev => ({
+      ...prev,
+      assets: [...prev.assets, newAsset],
+      updatedAt: new Date().toISOString()
+    }));
+    
+    historyManagerRef.current?.push({
+      type: 'asset',
+      data: newAsset
+    });
+    
+    return newAsset;
+  }, []);
+
+  // Delete asset
+  const deleteAsset = useCallback((assetId: string) => {
+    setMapState(prev => ({
+      ...prev,
+      assets: prev.assets.filter(a => a.id !== assetId),
+      updatedAt: new Date().toISOString()
+    }));
+  }, []);
+
+  // Delete path
+  const deletePath = useCallback((pathId: string) => {
+    setMapState(prev => ({
+      ...prev,
+      paths: prev.paths.filter(p => p.id !== pathId),
+      updatedAt: new Date().toISOString()
+    }));
+  }, []);
+
+  // Delete label
+  const deleteLabel = useCallback((labelId: string) => {
+    setMapState(prev => ({
+      ...prev,
+      labels: prev.labels.filter(l => l.id !== labelId),
+      updatedAt: new Date().toISOString()
+    }));
+  }, []);
+
+  // Layer management
+  const toggleLayerVisibility = useCallback((layerId: string) => {
+    setMapState(prev => ({
+      ...prev,
+      layers: prev.layers.map(l => 
+        l.id === layerId ? { ...l, visible: !l.visible } : l
+      ),
+      updatedAt: new Date().toISOString()
+    }));
+  }, []);
+
+  const toggleLayerLock = useCallback((layerId: string) => {
+    setMapState(prev => ({
+      ...prev,
+      layers: prev.layers.map(l => 
+        l.id === layerId ? { ...l, locked: !l.locked } : l
+      ),
+      updatedAt: new Date().toISOString()
+    }));
+  }, []);
+
+  const reorderLayers = useCallback((fromIndex: number, toIndex: number) => {
+    setMapState(prev => {
+      const newLayers = [...prev.layers];
+      const [removed] = newLayers.splice(fromIndex, 1);
+      newLayers.splice(toIndex, 0, removed);
+      return {
+        ...prev,
+        layers: newLayers.map((l, i) => ({ ...l, order: i })),
+        updatedAt: new Date().toISOString()
+      };
+    });
+  }, []);
+
+  const setLayerOpacity = useCallback((layerId: string, opacity: number) => {
+    setMapState(prev => ({
+      ...prev,
+      layers: prev.layers.map(l => 
+        l.id === layerId ? { ...l, opacity } : l
+      ),
+      updatedAt: new Date().toISOString()
+    }));
+  }, []);
 
   // Save
   const save = useCallback(() => {
@@ -365,6 +533,8 @@ export function useMapEditor({
     canUndo,
     canRedo,
     isDrawing,
+    currentPath,
+    isDrawingPath,
     
     // Setters
     setActiveTool,
@@ -377,6 +547,7 @@ export function useMapEditor({
     initViewport,
     getTerrainCanvas,
     getTerrainTexture,
+    screenToCanvas,
     
     // Event handlers
     handleMouseDown,
@@ -394,5 +565,25 @@ export function useMapEditor({
     clearCanvas,
     save,
     exportAsImage,
+    
+    // Path operations
+    addPath,
+    finishPath,
+    cancelPath,
+    deletePath,
+    
+    // Label operations
+    addLabel,
+    deleteLabel,
+    
+    // Asset operations
+    addAsset,
+    deleteAsset,
+    
+    // Layer operations
+    toggleLayerVisibility,
+    toggleLayerLock,
+    reorderLayers,
+    setLayerOpacity,
   };
 }

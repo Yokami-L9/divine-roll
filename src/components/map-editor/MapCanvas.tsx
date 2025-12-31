@@ -27,6 +27,7 @@ export function MapCanvas({
 }: MapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   
   // UI State
   const [showAssetLibrary, setShowAssetLibrary] = useState(false);
@@ -36,7 +37,6 @@ export function MapCanvas({
     width: 8,
     color: '#8B7355'
   });
-  const [isDrawingPath, setIsDrawingPath] = useState(false);
   const [labelSettings, setLabelSettings] = useState({
     text: '',
     fontSize: 24,
@@ -53,6 +53,7 @@ export function MapCanvas({
     color: '#ffffff',
     snap: false
   });
+  const [showLayersPanel, setShowLayersPanel] = useState(false);
 
   const editor = useMapEditor({
     initialData,
@@ -69,7 +70,7 @@ export function MapCanvas({
     }
   }, [editor.initViewport]);
 
-  // Sync terrain canvas to display canvas
+  // Render main canvas + overlays
   useEffect(() => {
     if (!editor.isReady || !canvasRef.current) return;
     
@@ -81,9 +82,34 @@ export function MapCanvas({
 
     const render = () => {
       ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(terrainCanvas, 0, 0);
       
-      // Render grid overlay if enabled
+      // Draw terrain layer
+      if (editor.mapState.layers.find(l => l.id === 'terrain')?.visible) {
+        ctx.drawImage(terrainCanvas, 0, 0);
+      }
+      
+      // Draw paths
+      const pathsLayer = editor.mapState.layers.find(l => l.id === 'paths');
+      if (pathsLayer?.visible) {
+        ctx.globalAlpha = pathsLayer.opacity;
+        renderPaths(ctx, editor.mapState.paths);
+        
+        // Draw current path being drawn
+        if (editor.isDrawingPath && editor.currentPath.length > 0) {
+          renderCurrentPath(ctx, editor.currentPath, pathSettings);
+        }
+        ctx.globalAlpha = 1;
+      }
+      
+      // Draw labels
+      const labelsLayer = editor.mapState.layers.find(l => l.id === 'labels');
+      if (labelsLayer?.visible) {
+        ctx.globalAlpha = labelsLayer.opacity;
+        renderLabels(ctx, editor.mapState.labels);
+        ctx.globalAlpha = 1;
+      }
+      
+      // Draw grid overlay if enabled
       if (gridSettings.enabled) {
         renderGrid(ctx, gridSettings, width, height);
       }
@@ -92,7 +118,19 @@ export function MapCanvas({
     render();
     const interval = setInterval(render, 16);
     return () => clearInterval(interval);
-  }, [editor.isReady, editor.getTerrainCanvas, width, height, gridSettings]);
+  }, [
+    editor.isReady, 
+    editor.getTerrainCanvas, 
+    editor.mapState.paths, 
+    editor.mapState.labels, 
+    editor.mapState.layers,
+    editor.isDrawingPath,
+    editor.currentPath,
+    pathSettings,
+    width, 
+    height, 
+    gridSettings
+  ]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -107,9 +145,20 @@ export function MapCanvas({
         case 'i': editor.setActiveTool('eyedropper'); break;
         case 'p': editor.setActiveTool('path'); break;
         case 't': editor.setActiveTool('text'); break;
+        case 'l': setShowLayersPanel(v => !v); break;
         case ' ':
           e.preventDefault();
           editor.setActiveTool('pan');
+          break;
+        case 'escape':
+          if (editor.isDrawingPath) {
+            editor.cancelPath();
+          }
+          break;
+        case 'enter':
+          if (editor.isDrawingPath) {
+            editor.finishPath(pathSettings.type, pathSettings.width, pathSettings.color);
+          }
           break;
         case 'z':
           if (e.ctrlKey || e.metaKey) {
@@ -148,27 +197,48 @@ export function MapCanvas({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [editor]);
+  }, [editor, pathSettings]);
 
-  // Layer management
-  const handleToggleLayerVisibility = useCallback((layerId: string) => {
-    // Implementation would update mapState.layers
-  }, []);
-
-  const handleToggleLayerLock = useCallback((layerId: string) => {
-    // Implementation would update mapState.layers
-  }, []);
-
-  const handleReorderLayers = useCallback((fromIndex: number, toIndex: number) => {
-    // Implementation would reorder layers
-  }, []);
-
-  const handleLayerOpacityChange = useCallback((layerId: string, opacity: number) => {
-    // Implementation would update layer opacity
-  }, []);
+  // Handle canvas click for text tool
+  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    if (editor.activeTool === 'text' && labelSettings.text.trim()) {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      const canvasPoint = editor.screenToCanvas(screenX, screenY);
+      
+      editor.addLabel({
+        text: labelSettings.text,
+        x: canvasPoint.x,
+        y: canvasPoint.y,
+        fontSize: labelSettings.fontSize,
+        fontFamily: labelSettings.fontFamily,
+        color: labelSettings.color,
+        outlineColor: labelSettings.outlineColor,
+        outlineWidth: labelSettings.outlineWidth,
+        rotation: 0
+      });
+      
+      setLabelSettings(s => ({ ...s, text: '' }));
+    }
+  }, [editor, labelSettings]);
 
   // Determine which right panel to show
   const getRightPanel = () => {
+    if (showLayersPanel) {
+      return (
+        <LayersPanel
+          layers={editor.mapState.layers}
+          onToggleVisibility={editor.toggleLayerVisibility}
+          onToggleLock={editor.toggleLayerLock}
+          onReorder={editor.reorderLayers}
+          onOpacityChange={editor.setLayerOpacity}
+        />
+      );
+    }
+    
     switch (editor.activeTool) {
       case 'brush':
       case 'eraser':
@@ -185,12 +255,12 @@ export function MapCanvas({
             pathType={pathSettings.type}
             onPathTypeChange={(type) => setPathSettings(s => ({ ...s, type }))}
             pathWidth={pathSettings.width}
-            onPathWidthChange={(width) => setPathSettings(s => ({ ...s, width }))}
+            onPathWidthChange={(w) => setPathSettings(s => ({ ...s, width: w }))}
             pathColor={pathSettings.color}
             onPathColorChange={(color) => setPathSettings(s => ({ ...s, color }))}
-            isDrawingPath={isDrawingPath}
-            onFinishPath={() => setIsDrawingPath(false)}
-            onCancelPath={() => setIsDrawingPath(false)}
+            isDrawingPath={editor.isDrawingPath}
+            onFinishPath={() => editor.finishPath(pathSettings.type, pathSettings.width, pathSettings.color)}
+            onCancelPath={() => editor.cancelPath()}
           />
         );
       case 'text':
@@ -262,7 +332,10 @@ export function MapCanvas({
         <div 
           ref={containerRef}
           className="flex-1 overflow-hidden relative bg-[#0d0d1a] cursor-crosshair"
-          onMouseDown={(e) => editor.handleMouseDown(e)}
+          onMouseDown={(e) => {
+            editor.handleMouseDown(e);
+            handleCanvasClick(e);
+          }}
           onMouseMove={(e) => editor.handleMouseMove(e)}
           onMouseUp={() => editor.handleMouseUp()}
           onMouseLeave={() => editor.handleMouseUp()}
@@ -283,15 +356,20 @@ export function MapCanvas({
             />
           </div>
           
-          {/* Zoom indicator */}
+          {/* Status indicators */}
           <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1 rounded text-sm font-mono">
             {Math.round(editor.viewport.zoom * 100)}%
           </div>
 
-          {/* Coordinates indicator */}
           <div className="absolute bottom-4 left-4 bg-black/60 text-white px-3 py-1 rounded text-sm font-mono">
             {width} × {height}
           </div>
+          
+          {editor.isDrawingPath && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg text-sm">
+              Клик для добавления точек • Enter для завершения • Esc для отмены
+            </div>
+          )}
         </div>
 
         {/* Right Panel - Context-sensitive */}
@@ -299,6 +377,105 @@ export function MapCanvas({
       </div>
     </div>
   );
+}
+
+// Helper function to render paths
+function renderPaths(ctx: CanvasRenderingContext2D, paths: MapPath[]) {
+  paths.forEach(path => {
+    if (path.points.length < 2) return;
+    
+    ctx.save();
+    ctx.strokeStyle = path.color;
+    ctx.lineWidth = path.width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    if (path.style === 'dashed') {
+      ctx.setLineDash([path.width * 2, path.width]);
+    } else if (path.style === 'dotted') {
+      ctx.setLineDash([path.width / 2, path.width]);
+    }
+    
+    ctx.beginPath();
+    ctx.moveTo(path.points[0].x, path.points[0].y);
+    
+    // Smooth Bezier curve through points
+    for (let i = 1; i < path.points.length - 1; i++) {
+      const xc = (path.points[i].x + path.points[i + 1].x) / 2;
+      const yc = (path.points[i].y + path.points[i + 1].y) / 2;
+      ctx.quadraticCurveTo(path.points[i].x, path.points[i].y, xc, yc);
+    }
+    
+    if (path.points.length > 1) {
+      const last = path.points[path.points.length - 1];
+      ctx.lineTo(last.x, last.y);
+    }
+    
+    ctx.stroke();
+    ctx.restore();
+  });
+}
+
+// Helper function to render current path being drawn
+function renderCurrentPath(
+  ctx: CanvasRenderingContext2D, 
+  points: { x: number; y: number }[], 
+  settings: { type: string; width: number; color: string }
+) {
+  if (points.length < 1) return;
+  
+  ctx.save();
+  ctx.strokeStyle = settings.color;
+  ctx.lineWidth = settings.width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([5, 5]);
+  
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+  
+  ctx.stroke();
+  
+  // Draw points
+  points.forEach((point, i) => {
+    ctx.fillStyle = i === 0 ? '#22c55e' : '#3b82f6';
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, settings.width / 2 + 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  
+  ctx.restore();
+}
+
+// Helper function to render labels
+function renderLabels(ctx: CanvasRenderingContext2D, labels: import('./types').MapLabel[]) {
+  labels.forEach(label => {
+    ctx.save();
+    ctx.translate(label.x, label.y);
+    ctx.rotate((label.rotation * Math.PI) / 180);
+    
+    ctx.font = `${label.fontSize}px ${label.fontFamily}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Outline
+    if (label.outlineWidth > 0 && label.outlineColor) {
+      ctx.strokeStyle = label.outlineColor;
+      ctx.lineWidth = label.outlineWidth * 2;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(label.text, 0, 0);
+    }
+    
+    // Fill
+    ctx.fillStyle = label.color;
+    ctx.fillText(label.text, 0, 0);
+    
+    ctx.restore();
+  });
 }
 
 // Helper function to render grid
