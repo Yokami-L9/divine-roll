@@ -322,8 +322,7 @@ export class TerrainRenderer {
         for (let j = 1; j <= steps; j++) {
           result.push({
             x: prev.x + (dx * j) / steps,
-            y: prev.y + (dy * j) / steps,
-            pressure: prev.pressure
+            y: prev.y + (dy * j) / steps
           });
         }
       } else {
