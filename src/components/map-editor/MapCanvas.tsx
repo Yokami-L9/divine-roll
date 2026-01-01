@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useMapEditor } from './hooks/useMapEditor';
+import { useAssetManager } from './hooks/useAssetManager';
 import { EditorToolbar } from './ui/EditorToolbar';
 import { TerrainPanel } from './ui/TerrainPanel';
 import { BrushPanel } from './ui/BrushPanel';
@@ -31,7 +32,6 @@ export function MapCanvas({
   
   // UI State
   const [showAssetLibrary, setShowAssetLibrary] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
   const [pathSettings, setPathSettings] = useState({
     type: 'road' as MapPath['type'],
     width: 8,
@@ -61,6 +61,14 @@ export function MapCanvas({
     height,
     mapId,
     onSave
+  });
+
+  // Asset manager
+  const assetManager = useAssetManager({
+    assets: editor.mapState.assets,
+    onAddAsset: editor.addAsset,
+    onUpdateAsset: editor.updateAsset,
+    onDeleteAsset: editor.deleteAsset,
   });
 
   // Initialize viewport when container mounts
@@ -101,6 +109,20 @@ export function MapCanvas({
         ctx.globalAlpha = 1;
       }
       
+      // Draw assets
+      const assetsLayer = editor.mapState.layers.find(l => l.id === 'assets');
+      if (assetsLayer?.visible) {
+        ctx.globalAlpha = assetsLayer.opacity;
+        const renderer = assetManager.getAssetRenderer();
+        renderer.renderAssets(
+          ctx, 
+          editor.mapState.assets,
+          assetManager.selectedAssetId,
+          assetManager.hoveredAssetId
+        );
+        ctx.globalAlpha = 1;
+      }
+      
       // Draw labels
       const labelsLayer = editor.mapState.layers.find(l => l.id === 'labels');
       if (labelsLayer?.visible) {
@@ -122,10 +144,14 @@ export function MapCanvas({
     editor.isReady, 
     editor.getTerrainCanvas, 
     editor.mapState.paths, 
-    editor.mapState.labels, 
+    editor.mapState.labels,
+    editor.mapState.assets,
     editor.mapState.layers,
     editor.isDrawingPath,
     editor.currentPath,
+    assetManager.selectedAssetId,
+    assetManager.hoveredAssetId,
+    assetManager.getAssetRenderer,
     pathSettings,
     width, 
     height, 
@@ -145,6 +171,10 @@ export function MapCanvas({
         case 'i': editor.setActiveTool('eyedropper'); break;
         case 'p': editor.setActiveTool('path'); break;
         case 't': editor.setActiveTool('text'); break;
+        case 'a': 
+          editor.setActiveTool('asset'); 
+          setShowAssetLibrary(true);
+          break;
         case 'l': setShowLayersPanel(v => !v); break;
         case ' ':
           e.preventDefault();
@@ -154,10 +184,49 @@ export function MapCanvas({
           if (editor.isDrawingPath) {
             editor.cancelPath();
           }
+          if (assetManager.placingAssetId) {
+            assetManager.cancelPlacement();
+          }
+          if (assetManager.selectedAssetId) {
+            assetManager.setSelectedAssetId(null);
+          }
           break;
         case 'enter':
           if (editor.isDrawingPath) {
             editor.finishPath(pathSettings.type, pathSettings.width, pathSettings.color);
+          }
+          break;
+        case 'r':
+          // Rotate selected asset
+          if (assetManager.selectedAssetId) {
+            e.preventDefault();
+            assetManager.rotateSelected(e.shiftKey ? -15 : 15);
+          }
+          break;
+        case 'f':
+          // Flip selected asset
+          if (assetManager.selectedAssetId) {
+            e.preventDefault();
+            assetManager.flipSelected();
+          }
+          break;
+        case 'delete':
+        case 'backspace':
+          if (assetManager.selectedAssetId) {
+            e.preventDefault();
+            assetManager.deleteSelected();
+          }
+          break;
+        case '[':
+          if (assetManager.selectedAssetId) {
+            e.preventDefault();
+            assetManager.sendToBack();
+          }
+          break;
+        case ']':
+          if (assetManager.selectedAssetId) {
+            e.preventDefault();
+            assetManager.bringToFront();
           }
           break;
         case 'z':
@@ -197,18 +266,31 @@ export function MapCanvas({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [editor, pathSettings]);
+  }, [editor, pathSettings, assetManager]);
 
-  // Handle canvas click for text tool
+  // Handle canvas click for text and asset tools
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const canvasPoint = editor.screenToCanvas(screenX, screenY);
+    
+    // Place asset if one is selected
+    if (editor.activeTool === 'asset' && assetManager.placingAssetId) {
+      assetManager.placeAsset(canvasPoint.x, canvasPoint.y);
+      return;
+    }
+    
+    // Handle asset selection/dragging in select mode
+    if (editor.activeTool === 'select') {
+      assetManager.handleMouseDown(canvasPoint.x, canvasPoint.y);
+      return;
+    }
+    
+    // Place text label
     if (editor.activeTool === 'text' && labelSettings.text.trim()) {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      
-      const screenX = e.clientX - rect.left;
-      const screenY = e.clientY - rect.top;
-      const canvasPoint = editor.screenToCanvas(screenX, screenY);
-      
       editor.addLabel({
         text: labelSettings.text,
         x: canvasPoint.x,
@@ -223,7 +305,36 @@ export function MapCanvas({
       
       setLabelSettings(s => ({ ...s, text: '' }));
     }
-  }, [editor, labelSettings]);
+  }, [editor, labelSettings, assetManager]);
+
+  // Handle mouse move for assets
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (editor.activeTool === 'select') {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      const canvasPoint = editor.screenToCanvas(screenX, screenY);
+      assetManager.handleMouseMove(canvasPoint.x, canvasPoint.y);
+    }
+    editor.handleMouseMove(e);
+  }, [editor, assetManager]);
+
+  // Handle mouse up for assets
+  const handleMouseUp = useCallback(() => {
+    assetManager.handleMouseUp();
+    editor.handleMouseUp();
+  }, [editor, assetManager]);
+
+  // Handle wheel for asset scaling
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (assetManager.selectedAssetId && e.ctrlKey) {
+      e.preventDefault();
+      assetManager.scaleSelected(e.deltaY > 0 ? -0.1 : 0.1);
+      return;
+    }
+    editor.handleWheel(e);
+  }, [editor, assetManager]);
 
   // Determine which right panel to show
   const getRightPanel = () => {
@@ -284,8 +395,8 @@ export function MapCanvas({
       case 'asset':
         return (
           <AssetLibrary
-            onSelectAsset={setSelectedAsset}
-            selectedAsset={selectedAsset}
+            onSelectAsset={(assetId) => assetManager.selectAssetForPlacement(assetId)}
+            selectedAsset={assetManager.placingAssetId}
             isExpanded={showAssetLibrary}
             onToggleExpanded={() => setShowAssetLibrary(v => !v)}
           />
@@ -336,10 +447,10 @@ export function MapCanvas({
             editor.handleMouseDown(e);
             handleCanvasClick(e);
           }}
-          onMouseMove={(e) => editor.handleMouseMove(e)}
-          onMouseUp={() => editor.handleMouseUp()}
-          onMouseLeave={() => editor.handleMouseUp()}
-          onWheel={(e) => editor.handleWheel(e)}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
         >
           <div 
             className="absolute origin-top-left"
