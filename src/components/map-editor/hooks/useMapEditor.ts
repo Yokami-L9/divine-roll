@@ -413,6 +413,17 @@ export function useMapEditor({
     return newAsset;
   }, []);
 
+  // Update asset
+  const updateAsset = useCallback((assetId: string, updates: Partial<MapAsset>) => {
+    setMapState(prev => ({
+      ...prev,
+      assets: prev.assets.map(a => 
+        a.id === assetId ? { ...a, ...updates } : a
+      ),
+      updatedAt: new Date().toISOString()
+    }));
+  }, []);
+
   // Delete asset
   const deleteAsset = useCallback((assetId: string) => {
     setMapState(prev => ({
@@ -578,6 +589,7 @@ export function useMapEditor({
     
     // Asset operations
     addAsset,
+    updateAsset,
     deleteAsset,
     
     // Layer operations
