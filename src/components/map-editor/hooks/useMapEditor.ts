@@ -433,6 +433,17 @@ export function useMapEditor({
     }));
   }, []);
 
+  // Update path
+  const updatePath = useCallback((pathId: string, updates: Partial<MapPath>) => {
+    setMapState(prev => ({
+      ...prev,
+      paths: prev.paths.map(p => 
+        p.id === pathId ? { ...p, ...updates } : p
+      ),
+      updatedAt: new Date().toISOString()
+    }));
+  }, []);
+
   // Delete path
   const deletePath = useCallback((pathId: string) => {
     setMapState(prev => ({
@@ -579,6 +590,7 @@ export function useMapEditor({
     
     // Path operations
     addPath,
+    updatePath,
     finishPath,
     cancelPath,
     deletePath,
