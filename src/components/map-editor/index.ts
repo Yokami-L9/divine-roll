@@ -2,6 +2,7 @@
 
 export { MapCanvas } from './MapCanvas';
 export { useMapEditor } from './hooks/useMapEditor';
+export { usePathEditor } from './hooks/usePathEditor';
 export type { 
   MapState, 
   MapMode, 

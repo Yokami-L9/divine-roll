@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useMapEditor } from './hooks/useMapEditor';
 import { useAssetManager } from './hooks/useAssetManager';
+import { usePathEditor } from './hooks/usePathEditor';
 import { EditorToolbar } from './ui/EditorToolbar';
 import { TerrainPanel } from './ui/TerrainPanel';
 import { BrushPanel } from './ui/BrushPanel';
@@ -9,6 +10,7 @@ import { AssetLibrary } from './ui/AssetLibrary';
 import { PathToolPanel } from './ui/PathToolPanel';
 import { LabelToolPanel } from './ui/LabelToolPanel';
 import { GridSettingsPanel } from './ui/GridSettingsPanel';
+import { PathRenderer } from './engine/PathRenderer';
 import { MapState, ToolType, MapPath, GridSettings } from './types';
 
 interface MapCanvasProps {
@@ -71,6 +73,17 @@ export function MapCanvas({
     onDeleteAsset: editor.deleteAsset,
   });
 
+  // Path editor
+  const pathEditor = usePathEditor({
+    paths: editor.mapState.paths,
+    addPath: editor.addPath,
+    updatePath: editor.updatePath,
+    deletePath: editor.deletePath,
+  });
+
+  // Path renderer ref
+  const pathRendererRef = useRef<PathRenderer | null>(null);
+
   // Initialize viewport when container mounts
   useEffect(() => {
     if (containerRef.current) {
@@ -96,16 +109,51 @@ export function MapCanvas({
         ctx.drawImage(terrainCanvas, 0, 0);
       }
       
-      // Draw paths
+      // Draw paths with PathRenderer
       const pathsLayer = editor.mapState.layers.find(l => l.id === 'paths');
       if (pathsLayer?.visible) {
         ctx.globalAlpha = pathsLayer.opacity;
-        renderPaths(ctx, editor.mapState.paths);
+        
+        // Initialize path renderer if needed
+        if (!pathRendererRef.current) {
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = width;
+          tempCanvas.height = height;
+          pathRendererRef.current = new PathRenderer(tempCanvas);
+        }
+        
+        // Use PathRenderer with selection support
+        const pathRenderer = pathRendererRef.current;
+        pathRenderer.renderAllPaths(editor.mapState.paths, {
+          selectedPathId: pathEditor.selectedPathId,
+          selectedPointIndex: pathEditor.selectedPointIndex,
+          hoveredPointIndex: pathEditor.hoveredPointIndex,
+          showControlPoints: editor.activeTool === 'select' || editor.activeTool === 'path',
+        });
+        
+        // Draw the path renderer canvas onto main canvas
+        const pathCanvas = (pathRenderer as any).canvas;
+        if (pathCanvas) {
+          ctx.drawImage(pathCanvas, 0, 0);
+        } else {
+          // Fallback: render directly
+          renderPaths(ctx, editor.mapState.paths, pathEditor.selectedPathId);
+        }
         
         // Draw current path being drawn
         if (editor.isDrawingPath && editor.currentPath.length > 0) {
           renderCurrentPath(ctx, editor.currentPath, pathSettings);
         }
+        
+        // Draw path being drawn via pathEditor
+        if (pathEditor.isDrawingPath && pathEditor.currentPathPoints.length > 0) {
+          pathRenderer.renderCurrentPath(
+            pathEditor.currentPathPoints,
+            pathEditor.pathSettings.color,
+            pathEditor.pathSettings.width
+          );
+        }
+        
         ctx.globalAlpha = 1;
       }
       
@@ -149,9 +197,16 @@ export function MapCanvas({
     editor.mapState.layers,
     editor.isDrawingPath,
     editor.currentPath,
+    editor.activeTool,
     assetManager.selectedAssetId,
     assetManager.hoveredAssetId,
     assetManager.getAssetRenderer,
+    pathEditor.selectedPathId,
+    pathEditor.selectedPointIndex,
+    pathEditor.hoveredPointIndex,
+    pathEditor.isDrawingPath,
+    pathEditor.currentPathPoints,
+    pathEditor.pathSettings,
     pathSettings,
     width, 
     height, 
@@ -184,6 +239,12 @@ export function MapCanvas({
           if (editor.isDrawingPath) {
             editor.cancelPath();
           }
+          if (pathEditor.isDrawingPath) {
+            pathEditor.cancelDrawing();
+          }
+          if (pathEditor.selectedPathId) {
+            pathEditor.selectPath(null);
+          }
           if (assetManager.placingAssetId) {
             assetManager.cancelPlacement();
           }
@@ -194,6 +255,9 @@ export function MapCanvas({
         case 'enter':
           if (editor.isDrawingPath) {
             editor.finishPath(pathSettings.type, pathSettings.width, pathSettings.color);
+          }
+          if (pathEditor.isDrawingPath) {
+            pathEditor.finishDrawing();
           }
           break;
         case 'r':
@@ -212,8 +276,13 @@ export function MapCanvas({
           break;
         case 'delete':
         case 'backspace':
-          if (assetManager.selectedAssetId) {
-            e.preventDefault();
+          e.preventDefault();
+          // Delete selected path point first, then path, then asset
+          if (pathEditor.selectedPointIndex !== null) {
+            pathEditor.deleteSelectedPoint();
+          } else if (pathEditor.selectedPathId) {
+            pathEditor.deleteSelectedPath();
+          } else if (assetManager.selectedAssetId) {
             assetManager.deleteSelected();
           }
           break;
@@ -266,7 +335,7 @@ export function MapCanvas({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [editor, pathSettings, assetManager]);
+  }, [editor, pathSettings, assetManager, pathEditor]);
 
   // Handle canvas click for text and asset tools
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
@@ -283,9 +352,14 @@ export function MapCanvas({
       return;
     }
     
-    // Handle asset selection/dragging in select mode
+    // Handle path/asset selection in select mode
     if (editor.activeTool === 'select') {
-      assetManager.handleMouseDown(canvasPoint.x, canvasPoint.y);
+      // Try path selection first
+      const pathHandled = pathEditor.handleMouseDown(canvasPoint.x, canvasPoint.y);
+      if (!pathHandled) {
+        // Then try asset selection
+        assetManager.handleMouseDown(canvasPoint.x, canvasPoint.y);
+      }
       return;
     }
     
@@ -305,26 +379,31 @@ export function MapCanvas({
       
       setLabelSettings(s => ({ ...s, text: '' }));
     }
-  }, [editor, labelSettings, assetManager]);
+  }, [editor, labelSettings, assetManager, pathEditor]);
 
-  // Handle mouse move for assets
+  // Handle mouse move for assets and paths
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const canvasPoint = editor.screenToCanvas(screenX, screenY);
+    
     if (editor.activeTool === 'select') {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const screenX = e.clientX - rect.left;
-      const screenY = e.clientY - rect.top;
-      const canvasPoint = editor.screenToCanvas(screenX, screenY);
+      // Handle path editing
+      pathEditor.handleMouseMove(canvasPoint.x, canvasPoint.y);
+      // Handle asset dragging
       assetManager.handleMouseMove(canvasPoint.x, canvasPoint.y);
     }
     editor.handleMouseMove(e);
-  }, [editor, assetManager]);
+  }, [editor, assetManager, pathEditor]);
 
-  // Handle mouse up for assets
+  // Handle mouse up for assets and paths
   const handleMouseUp = useCallback(() => {
+    pathEditor.handleMouseUp();
     assetManager.handleMouseUp();
     editor.handleMouseUp();
-  }, [editor, assetManager]);
+  }, [editor, assetManager, pathEditor]);
 
   // Handle wheel for asset scaling
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -491,9 +570,11 @@ export function MapCanvas({
 }
 
 // Helper function to render paths
-function renderPaths(ctx: CanvasRenderingContext2D, paths: MapPath[]) {
+function renderPaths(ctx: CanvasRenderingContext2D, paths: MapPath[], selectedPathId?: string | null) {
   paths.forEach(path => {
     if (path.points.length < 2) return;
+    
+    const isSelected = path.id === selectedPathId;
     
     ctx.save();
     ctx.strokeStyle = path.color;
@@ -505,6 +586,27 @@ function renderPaths(ctx: CanvasRenderingContext2D, paths: MapPath[]) {
       ctx.setLineDash([path.width * 2, path.width]);
     } else if (path.style === 'dotted') {
       ctx.setLineDash([path.width / 2, path.width]);
+    }
+    
+    // Draw glow for selected path
+    if (isSelected) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = path.width + 6;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(path.points[0].x, path.points[0].y);
+      for (let i = 1; i < path.points.length - 1; i++) {
+        const xc = (path.points[i].x + path.points[i + 1].x) / 2;
+        const yc = (path.points[i].y + path.points[i + 1].y) / 2;
+        ctx.quadraticCurveTo(path.points[i].x, path.points[i].y, xc, yc);
+      }
+      if (path.points.length > 1) {
+        const last = path.points[path.points.length - 1];
+        ctx.lineTo(last.x, last.y);
+      }
+      ctx.stroke();
+      ctx.restore();
     }
     
     ctx.beginPath();
