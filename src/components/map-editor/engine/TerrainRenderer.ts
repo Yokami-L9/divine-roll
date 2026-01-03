@@ -344,6 +344,161 @@ export class TerrainRenderer {
     }
   }
 
+  // Flood fill at a specific point
+  public floodFill(x: number, y: number, terrain: TerrainType, tolerance: number = 32): void {
+    const texture = this.textureCache[terrain];
+    if (!texture) return;
+    
+    x = Math.floor(x);
+    y = Math.floor(y);
+    
+    if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
+    
+    const imageData = this.ctx.getImageData(0, 0, this.width, this.height);
+    const data = imageData.data;
+    
+    // Get the target color at click point
+    const startIdx = (y * this.width + x) * 4;
+    const targetR = data[startIdx];
+    const targetG = data[startIdx + 1];
+    const targetB = data[startIdx + 2];
+    
+    // Create mask for fill area
+    const mask = new Uint8Array(this.width * this.height);
+    const stack: [number, number][] = [[x, y]];
+    
+    const colorMatch = (idx: number): boolean => {
+      const dr = Math.abs(data[idx] - targetR);
+      const dg = Math.abs(data[idx + 1] - targetG);
+      const db = Math.abs(data[idx + 2] - targetB);
+      return dr <= tolerance && dg <= tolerance && db <= tolerance;
+    };
+    
+    // Flood fill algorithm with scanline optimization
+    while (stack.length > 0) {
+      const [cx, cy] = stack.pop()!;
+      const maskIdx = cy * this.width + cx;
+      
+      if (cx < 0 || cx >= this.width || cy < 0 || cy >= this.height) continue;
+      if (mask[maskIdx]) continue;
+      
+      const pixelIdx = maskIdx * 4;
+      if (!colorMatch(pixelIdx)) continue;
+      
+      // Scanline fill
+      let left = cx;
+      let right = cx;
+      
+      // Find left boundary
+      while (left > 0) {
+        const idx = (cy * this.width + left - 1) * 4;
+        const mIdx = cy * this.width + left - 1;
+        if (mask[mIdx] || !colorMatch(idx)) break;
+        left--;
+      }
+      
+      // Find right boundary
+      while (right < this.width - 1) {
+        const idx = (cy * this.width + right + 1) * 4;
+        const mIdx = cy * this.width + right + 1;
+        if (mask[mIdx] || !colorMatch(idx)) break;
+        right++;
+      }
+      
+      // Fill the scanline and add neighbors
+      for (let px = left; px <= right; px++) {
+        mask[cy * this.width + px] = 1;
+        
+        // Check above
+        if (cy > 0) {
+          const aboveIdx = (cy - 1) * this.width + px;
+          if (!mask[aboveIdx] && colorMatch(aboveIdx * 4)) {
+            stack.push([px, cy - 1]);
+          }
+        }
+        
+        // Check below
+        if (cy < this.height - 1) {
+          const belowIdx = (cy + 1) * this.width + px;
+          if (!mask[belowIdx] && colorMatch(belowIdx * 4)) {
+            stack.push([px, cy + 1]);
+          }
+        }
+      }
+    }
+    
+    // Apply texture to masked area
+    const textureCtx = texture.getContext('2d')!;
+    const textureData = textureCtx.getImageData(0, 0, texture.width, texture.height);
+    const tData = textureData.data;
+    const tw = texture.width;
+    const th = texture.height;
+    
+    for (let py = 0; py < this.height; py++) {
+      for (let px = 0; px < this.width; px++) {
+        const maskIdx = py * this.width + px;
+        if (mask[maskIdx]) {
+          const pixelIdx = maskIdx * 4;
+          const tx = px % tw;
+          const ty = py % th;
+          const textureIdx = (ty * tw + tx) * 4;
+          
+          data[pixelIdx] = tData[textureIdx];
+          data[pixelIdx + 1] = tData[textureIdx + 1];
+          data[pixelIdx + 2] = tData[textureIdx + 2];
+          data[pixelIdx + 3] = 255;
+        }
+      }
+    }
+    
+    this.ctx.putImageData(imageData, 0, 0);
+  }
+
+  // Eyedropper - detect terrain at point
+  public getTerrainAtPoint(x: number, y: number): TerrainType | null {
+    x = Math.floor(x);
+    y = Math.floor(y);
+    
+    if (x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
+    
+    const imageData = this.ctx.getImageData(x, y, 1, 1);
+    const [r, g, b] = imageData.data;
+    
+    // Find closest matching terrain
+    let bestMatch: TerrainType | null = null;
+    let bestDistance = Infinity;
+    
+    for (const config of TERRAIN_CONFIGS) {
+      const terrainRgb = this.hexToRgb(config.baseColor);
+      // Allow some variance since textures have noise
+      const distance = Math.sqrt(
+        Math.pow(r - terrainRgb.r, 2) +
+        Math.pow(g - terrainRgb.g, 2) +
+        Math.pow(b - terrainRgb.b, 2)
+      );
+      
+      if (distance < bestDistance && distance < 100) {
+        bestDistance = distance;
+        bestMatch = config.id;
+      }
+    }
+    
+    return bestMatch;
+  }
+
+  // Get color at point (for eyedropper visual feedback)
+  public getColorAtPoint(x: number, y: number): string | null {
+    x = Math.floor(x);
+    y = Math.floor(y);
+    
+    if (x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
+    
+    const imageData = this.ctx.getImageData(x, y, 1, 1);
+    const [r, g, b] = imageData.data;
+    
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
   public getCanvas(): HTMLCanvasElement {
     return this.canvas;
   }

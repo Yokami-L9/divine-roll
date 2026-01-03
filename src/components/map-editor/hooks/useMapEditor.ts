@@ -294,7 +294,7 @@ export function useMapEditor({
     }
   }, []);
 
-  // Fill terrain
+  // Fill terrain (whole canvas)
   const fillTerrain = useCallback((terrain: TerrainType) => {
     const renderer = terrainRendererRef.current;
     if (!renderer) return;
@@ -305,6 +305,32 @@ export function useMapEditor({
       backgroundColor: '#000000',
       updatedAt: new Date().toISOString()
     }));
+  }, []);
+
+  // Flood fill at specific point
+  const floodFillAt = useCallback((x: number, y: number, terrain: TerrainType) => {
+    const renderer = terrainRendererRef.current;
+    if (!renderer) return;
+
+    renderer.floodFill(x, y, terrain, 32);
+    
+    historyManagerRef.current?.push({
+      type: 'stroke',
+      data: { action: 'floodFill', x, y, terrain }
+    });
+    
+    setMapState(prev => ({
+      ...prev,
+      updatedAt: new Date().toISOString()
+    }));
+  }, []);
+
+  // Eyedropper - pick terrain at point
+  const pickTerrainAt = useCallback((x: number, y: number): TerrainType | null => {
+    const renderer = terrainRendererRef.current;
+    if (!renderer) return null;
+
+    return renderer.getTerrainAtPoint(x, y);
   }, []);
 
   // Clear canvas
@@ -531,6 +557,15 @@ export function useMapEditor({
     }));
   }, []);
 
+  // Update effects
+  const updateEffects = useCallback((updates: Partial<typeof mapState.effects>) => {
+    setMapState(prev => ({
+      ...prev,
+      effects: { ...prev.effects, ...updates },
+      updatedAt: new Date().toISOString()
+    }));
+  }, []);
+
   // Update brush setting
   const updateBrushSetting = useCallback(<K extends keyof BrushSettings>(
     key: K,
@@ -564,6 +599,7 @@ export function useMapEditor({
     setBrushSettings,
     updateBrushSetting,
     setMapMode,
+    updateEffects,
     
     // Canvas operations
     initViewport,
@@ -584,6 +620,8 @@ export function useMapEditor({
     undo,
     redo,
     fillTerrain,
+    floodFillAt,
+    pickTerrainAt,
     clearCanvas,
     save,
     exportAsImage,

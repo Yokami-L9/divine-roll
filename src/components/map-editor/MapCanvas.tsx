@@ -10,7 +10,10 @@ import { AssetLibrary } from './ui/AssetLibrary';
 import { PathToolPanel } from './ui/PathToolPanel';
 import { LabelToolPanel } from './ui/LabelToolPanel';
 import { GridSettingsPanel } from './ui/GridSettingsPanel';
+import { EffectsPanel } from './ui/EffectsPanel';
+import { MapModeSelector } from './ui/MapModeSelector';
 import { PathRenderer } from './engine/PathRenderer';
+import { EffectsRenderer } from './engine/EffectsRenderer';
 import { MapState, ToolType, MapPath, GridSettings } from './types';
 
 interface MapCanvasProps {
@@ -83,6 +86,12 @@ export function MapCanvas({
 
   // Path renderer ref
   const pathRendererRef = useRef<PathRenderer | null>(null);
+  
+  // Effects renderer ref  
+  const effectsRendererRef = useRef<EffectsRenderer | null>(null);
+  
+  // Effects panel toggle
+  const [showEffectsPanel, setShowEffectsPanel] = useState(false);
 
   // Initialize viewport when container mounts
   useEffect(() => {
@@ -183,6 +192,19 @@ export function MapCanvas({
       if (gridSettings.enabled) {
         renderGrid(ctx, gridSettings, width, height);
       }
+      
+      // Apply post-processing effects
+      const effects = editor.mapState.effects;
+      if (effects.paperTexture || effects.vignette || effects.colorGrading.enabled) {
+        // Initialize effects renderer if needed
+        if (!effectsRendererRef.current && canvasRef.current) {
+          effectsRendererRef.current = new EffectsRenderer(canvasRef.current);
+        }
+        
+        if (effectsRendererRef.current) {
+          effectsRendererRef.current.renderEffects(effects);
+        }
+      }
     };
 
     render();
@@ -210,7 +232,8 @@ export function MapCanvas({
     pathSettings,
     width, 
     height, 
-    gridSettings
+    gridSettings,
+    editor.mapState.effects
   ]);
 
   // Keyboard shortcuts
@@ -230,7 +253,8 @@ export function MapCanvas({
           editor.setActiveTool('asset'); 
           setShowAssetLibrary(true);
           break;
-        case 'l': setShowLayersPanel(v => !v); break;
+        case 'l': setShowLayersPanel(v => !v); setShowEffectsPanel(false); break;
+        case 'x': setShowEffectsPanel(v => !v); setShowLayersPanel(false); break;
         case ' ':
           e.preventDefault();
           editor.setActiveTool('pan');
@@ -337,7 +361,7 @@ export function MapCanvas({
     };
   }, [editor, pathSettings, assetManager, pathEditor]);
 
-  // Handle canvas click for text and asset tools
+  // Handle canvas click for various tools
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -360,6 +384,22 @@ export function MapCanvas({
         // Then try asset selection
         assetManager.handleMouseDown(canvasPoint.x, canvasPoint.y);
       }
+      return;
+    }
+    
+    // Eyedropper tool - pick terrain
+    if (editor.activeTool === 'eyedropper') {
+      const terrain = editor.pickTerrainAt(canvasPoint.x, canvasPoint.y);
+      if (terrain) {
+        editor.setSelectedTerrain(terrain);
+        editor.setActiveTool('brush'); // Switch back to brush after picking
+      }
+      return;
+    }
+    
+    // Fill tool - flood fill at point
+    if (editor.activeTool === 'fill') {
+      editor.floodFillAt(canvasPoint.x, canvasPoint.y, editor.selectedTerrain);
       return;
     }
     
@@ -417,6 +457,15 @@ export function MapCanvas({
 
   // Determine which right panel to show
   const getRightPanel = () => {
+    if (showEffectsPanel) {
+      return (
+        <EffectsPanel
+          effects={editor.mapState.effects}
+          onUpdateEffects={editor.updateEffects}
+        />
+      );
+    }
+    
     if (showLayersPanel) {
       return (
         <LayersPanel
@@ -508,6 +557,28 @@ export function MapCanvas({
         onExport={editor.exportAsImage}
         onClear={editor.clearCanvas}
       />
+      
+      {/* Map Mode Selector */}
+      <div className="flex items-center justify-between px-3 py-1 bg-[#0f1629] border-b border-border">
+        <MapModeSelector 
+          currentMode={editor.mapState.mode}
+          onModeChange={editor.setMapMode}
+        />
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <button 
+            className={`px-2 py-1 rounded hover:bg-muted/20 ${showLayersPanel ? 'bg-muted/30 text-primary' : ''}`}
+            onClick={() => { setShowLayersPanel(v => !v); setShowEffectsPanel(false); }}
+          >
+            Слои (L)
+          </button>
+          <button 
+            className={`px-2 py-1 rounded hover:bg-muted/20 ${showEffectsPanel ? 'bg-muted/30 text-primary' : ''}`}
+            onClick={() => { setShowEffectsPanel(v => !v); setShowLayersPanel(false); }}
+          >
+            Эффекты (X)
+          </button>
+        </div>
+      </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - Terrain */}
