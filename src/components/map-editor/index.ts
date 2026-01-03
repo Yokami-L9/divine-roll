@@ -26,6 +26,8 @@ export { AssetLibrary } from './ui/AssetLibrary';
 export { PathToolPanel } from './ui/PathToolPanel';
 export { LabelToolPanel } from './ui/LabelToolPanel';
 export { GridSettingsPanel } from './ui/GridSettingsPanel';
+export { EffectsPanel } from './ui/EffectsPanel';
+export { MapModeSelector } from './ui/MapModeSelector';
 
 // Engine
 export { TerrainRenderer } from './engine/TerrainRenderer';
