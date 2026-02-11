@@ -17,6 +17,7 @@ import { ConditionCard } from "@/components/rulebook/ConditionCard";
 import { ConditionDetailModal } from "@/components/rulebook/ConditionDetailModal";
 import { RuleSection } from "@/components/rulebook/RuleSection";
 import { RuleDetailModal } from "@/components/rulebook/RuleDetailModal";
+import { BestiarySection } from "@/components/rulebook/BestiarySection";
 import { Badge } from "@/components/ui/badge";
 interface BookPart {
   id: string;
@@ -442,6 +443,8 @@ export default function Rulebook() {
 
         {currentBook.id === "player" ? (
           <PlayerHandbookContent partId={currentPart.id} />
+        ) : currentBook.id === "bestiary" ? (
+          <BestiarySection />
         ) : (
           <ComingSoon title={currentPart.title} />
         )}
