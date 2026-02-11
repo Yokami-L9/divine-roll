@@ -70,13 +70,13 @@ IMPORTANT:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Parse all monster stat blocks from this text:\n\n${text}` },
         ],
         temperature: 0.1,
-        max_tokens: 16000,
+        max_tokens: 100000,
       }),
     });
 
