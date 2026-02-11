@@ -4,9 +4,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Search, 
-  BookOpen, 
   Sparkles, 
   Shield, 
   Flame, 
@@ -16,15 +16,95 @@ import {
   Heart,
   Wind,
   Snowflake,
-  Sun,
   Moon,
   Coins,
   Sword,
-  Package
+  Package,
+  Bug,
+  ChevronDown,
+  Loader2
 } from "lucide-react";
+import { useMonsters, type Monster } from "@/hooks/useRulebook";
+
+const MonsterCard = ({ monster }: { monster: Monster }) => {
+  const [open, setOpen] = useState(false);
+  const mod = (score: number) => {
+    const m = Math.floor((score - 10) / 2);
+    return m >= 0 ? `+${m}` : `${m}`;
+  };
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className="bg-card border-border hover:border-primary/50 transition-all overflow-hidden">
+        <CollapsibleTrigger className="w-full p-4 text-left">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-accent/20 rounded-lg flex items-center justify-center">
+                <Bug className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-serif font-semibold">{monster.name}</h3>
+                <p className="text-xs text-muted-foreground">
+                  {monster.size} {monster.type}, {monster.alignment || '—'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">CR {monster.challenge_rating}</Badge>
+              <Badge variant="outline">{monster.experience_points} XP</Badge>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+            </div>
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+            {monster.description && (
+              <p className="text-sm text-muted-foreground italic">{monster.description}</p>
+            )}
+            <div className="flex flex-wrap gap-4 text-sm">
+              <div><Shield className="w-4 h-4 inline mr-1 text-primary" />КД {monster.armor_class}</div>
+              <div><Heart className="w-4 h-4 inline mr-1 text-accent" />HP {monster.hit_points}</div>
+              <div><Wind className="w-4 h-4 inline mr-1 text-secondary" />{monster.speed}</div>
+            </div>
+            <div className="grid grid-cols-6 gap-2 text-center text-sm">
+              {(['strength','dexterity','constitution','intelligence','wisdom','charisma'] as const).map(stat => (
+                <div key={stat} className="bg-secondary/10 rounded p-2">
+                  <div className="text-xs text-muted-foreground uppercase">
+                    {stat === 'strength' ? 'СИЛ' : stat === 'dexterity' ? 'ЛОВ' : stat === 'constitution' ? 'ТЕЛ' : stat === 'intelligence' ? 'ИНТ' : stat === 'wisdom' ? 'МДР' : 'ХАР'}
+                  </div>
+                  <div className="font-bold">{monster[stat]}</div>
+                  <div className="text-xs text-muted-foreground">{mod(monster[stat])}</div>
+                </div>
+              ))}
+            </div>
+            {monster.senses && <p className="text-sm"><span className="font-semibold">Чувства:</span> {monster.senses}</p>}
+            {monster.languages && <p className="text-sm"><span className="font-semibold">Языки:</span> {monster.languages}</p>}
+            {monster.abilities?.length > 0 && (
+              <div>
+                <h4 className="font-serif font-semibold text-sm mb-1">Особенности</h4>
+                {monster.abilities.map((a, i) => (
+                  <p key={i} className="text-sm"><span className="font-semibold text-primary">{a.name}.</span> {a.description}</p>
+                ))}
+              </div>
+            )}
+            {monster.actions?.length > 0 && (
+              <div>
+                <h4 className="font-serif font-semibold text-sm mb-1">Действия</h4>
+                {monster.actions.map((a, i) => (
+                  <p key={i} className="text-sm"><span className="font-semibold text-accent">{a.name}.</span> {a.description}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  );
+};
 
 const Encyclopedia = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: monsters, isLoading: monstersLoading } = useMonsters();
 
   const conditions = [
     { name: "Ослепление", icon: Eye, description: "Существо не видит и автоматически проваливает проверки, требующие зрения.", color: "bg-accent/20" },
@@ -74,6 +154,11 @@ const Encyclopedia = () => {
     s.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredMonsters = (monsters || []).filter(m =>
+    m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    m.type.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -83,7 +168,7 @@ const Encyclopedia = () => {
             Энциклопедия правил
           </h1>
           <p className="text-muted-foreground">
-            Справочник по состояниям, заклинаниям, луту и ценам
+            Справочник по состояниям, заклинаниям, бестиарию, луту и ценам
           </p>
         </div>
 
@@ -108,6 +193,10 @@ const Encyclopedia = () => {
             <TabsTrigger value="spells" className="gap-2 data-[state=active]:bg-primary/20">
               <Sparkles className="w-4 h-4" />
               Заклинания
+            </TabsTrigger>
+            <TabsTrigger value="bestiary" className="gap-2 data-[state=active]:bg-primary/20">
+              <Bug className="w-4 h-4" />
+              Бестиарий
             </TabsTrigger>
             <TabsTrigger value="loot" className="gap-2 data-[state=active]:bg-primary/20">
               <Package className="w-4 h-4" />
@@ -166,6 +255,22 @@ const Encyclopedia = () => {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="bestiary">
+            {monstersLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : filteredMonsters.length === 0 ? (
+              <p className="text-center text-muted-foreground py-12">Монстры не найдены</p>
+            ) : (
+              <div className="space-y-3">
+                {filteredMonsters.map(monster => (
+                  <MonsterCard key={monster.id} monster={monster} />
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="loot">

@@ -475,6 +475,96 @@ export type Database = {
         }
         Relationships: []
       }
+      monsters: {
+        Row: {
+          abilities: Json | null
+          actions: Json | null
+          alignment: string | null
+          armor_class: number
+          challenge_rating: string
+          charisma: number
+          condition_immunities: string[] | null
+          constitution: number
+          created_at: string
+          damage_immunities: string[] | null
+          damage_resistances: string[] | null
+          description: string | null
+          dexterity: number
+          experience_points: number
+          hit_points: string
+          id: string
+          intelligence: number
+          languages: string | null
+          legendary_actions: Json | null
+          name: string
+          name_en: string | null
+          senses: string | null
+          size: string
+          speed: string | null
+          strength: number
+          type: string
+          wisdom: number
+        }
+        Insert: {
+          abilities?: Json | null
+          actions?: Json | null
+          alignment?: string | null
+          armor_class?: number
+          challenge_rating?: string
+          charisma?: number
+          condition_immunities?: string[] | null
+          constitution?: number
+          created_at?: string
+          damage_immunities?: string[] | null
+          damage_resistances?: string[] | null
+          description?: string | null
+          dexterity?: number
+          experience_points?: number
+          hit_points: string
+          id?: string
+          intelligence?: number
+          languages?: string | null
+          legendary_actions?: Json | null
+          name: string
+          name_en?: string | null
+          senses?: string | null
+          size?: string
+          speed?: string | null
+          strength?: number
+          type: string
+          wisdom?: number
+        }
+        Update: {
+          abilities?: Json | null
+          actions?: Json | null
+          alignment?: string | null
+          armor_class?: number
+          challenge_rating?: string
+          charisma?: number
+          condition_immunities?: string[] | null
+          constitution?: number
+          created_at?: string
+          damage_immunities?: string[] | null
+          damage_resistances?: string[] | null
+          description?: string | null
+          dexterity?: number
+          experience_points?: number
+          hit_points?: string
+          id?: string
+          intelligence?: number
+          languages?: string | null
+          legendary_actions?: Json | null
+          name?: string
+          name_en?: string | null
+          senses?: string | null
+          size?: string
+          speed?: string | null
+          strength?: number
+          type?: string
+          wisdom?: number
+        }
+        Relationships: []
+      }
       npcs: {
         Row: {
           created_at: string
