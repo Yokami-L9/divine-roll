@@ -53,10 +53,9 @@ export function MonsterDetailModal({ monster, open, onOpenChange }: MonsterDetai
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden bg-card">
-        <div className="flex flex-col h-full">
+      <DialogContent className="max-w-2xl max-h-[90vh] p-0 bg-card flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="relative bg-gradient-to-br from-accent/20 to-primary/5 p-6">
+          <div className="relative bg-gradient-to-br from-accent/20 to-primary/5 p-6 flex-shrink-0">
             <div className="flex gap-4">
               {/* Monster Image Placeholder */}
               <div className="w-24 h-24 rounded-lg overflow-hidden shadow-lg border border-border/50 flex-shrink-0 bg-muted flex items-center justify-center">
@@ -255,7 +254,6 @@ export function MonsterDetailModal({ monster, open, onOpenChange }: MonsterDetai
               )}
             </div>
           </ScrollArea>
-        </div>
       </DialogContent>
     </Dialog>
   );
