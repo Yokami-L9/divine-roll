@@ -65,11 +65,7 @@ const books: Book[] = [
     title: "Бестиарий",
     icon: <Skull className="h-5 w-5" />,
     description: "Монстры, существа и NPC для ваших приключений",
-    parts: [
-      { id: "part1", title: "Часть 1: Монстры A-G", description: "Аболеты, Драконы, Гоблины и другие", icon: <Skull className="h-4 w-4" /> },
-      { id: "part2", title: "Часть 2: Монстры H-O", description: "Химеры, Личи, Орки и другие", icon: <Skull className="h-4 w-4" /> },
-      { id: "part3", title: "Часть 3: Монстры P-Z", description: "Призраки, Тролли, Зомби и другие", icon: <Skull className="h-4 w-4" /> },
-    ],
+    parts: [],
   },
 ];
 
@@ -473,30 +469,36 @@ export default function Rulebook() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
-          {currentBook.parts.map((part) => (
-            <Card
-              key={part.id}
-              className="cursor-pointer hover:bg-accent/50 transition-colors"
-              onClick={() => setSelectedPart(part.id)}
-            >
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    {part.icon}
+        {currentBook.parts.length === 0 && currentBook.id === "bestiary" ? (
+          <div className="mt-8">
+            <BestiarySection />
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
+            {currentBook.parts.map((part) => (
+              <Card
+                key={part.id}
+                className="cursor-pointer hover:bg-accent/50 transition-colors"
+                onClick={() => setSelectedPart(part.id)}
+              >
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      {part.icon}
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="flex items-center justify-between">
+                        {part.title}
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      </CardTitle>
+                      <CardDescription>{part.description}</CardDescription>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <CardTitle className="flex items-center justify-between">
-                      {part.title}
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </CardTitle>
-                    <CardDescription>{part.description}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
