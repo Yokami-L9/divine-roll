@@ -207,6 +207,35 @@ export function useConditions() {
   });
 }
 
+export interface Monster {
+  id: string;
+  name: string;
+  name_en: string | null;
+  size: string;
+  type: string;
+  alignment: string | null;
+  armor_class: number;
+  hit_points: string;
+  speed: string | null;
+  strength: number;
+  dexterity: number;
+  constitution: number;
+  intelligence: number;
+  wisdom: number;
+  charisma: number;
+  challenge_rating: string;
+  experience_points: number;
+  abilities: Array<{ name: string; description: string }>;
+  actions: Array<{ name: string; description: string }>;
+  legendary_actions: Array<{ name: string; description: string }>;
+  damage_resistances: string[] | null;
+  damage_immunities: string[] | null;
+  condition_immunities: string[] | null;
+  senses: string | null;
+  languages: string | null;
+  description: string | null;
+}
+
 export function useRules() {
   return useQuery({
     queryKey: ["rules"],
@@ -221,6 +250,21 @@ export function useRules() {
         ...rule,
         subsections: (rule.subsections as unknown as RuleSubsection[]) || [],
       })) as Rule[];
+    },
+  });
+}
+
+export function useMonsters() {
+  return useQuery({
+    queryKey: ["monsters"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("monsters")
+        .select("*")
+        .order("challenge_rating")
+        .order("name");
+      if (error) throw error;
+      return (data as unknown) as Monster[];
     },
   });
 }
