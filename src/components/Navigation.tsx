@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import logo from "@/assets/logo.png";
 import {
   Scroll,
   Users,
@@ -39,9 +40,7 @@ const Navigation = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-gradient-gold rounded-lg flex items-center justify-center gold-glow group-hover:scale-110 transition-transform">
-              <Wand2 className="w-6 h-6 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="Divine Roll" className="w-10 h-10 rounded-full group-hover:scale-110 transition-transform" />
             <span className="text-xl font-serif font-bold text-primary">
               Divine Roll
             </span>

@@ -13,10 +13,10 @@ import {
   Shield,
   Dices,
   BookOpen,
-  Sparkles,
   Library,
 } from "lucide-react";
 import heroBanner from "@/assets/hero-banner.jpg";
+import logo from "@/assets/logo.png";
 
 const Index = () => {
   const features = [
@@ -97,7 +97,7 @@ const Index = () => {
 
         <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
           <div className="mb-6 inline-block animate-float">
-            <Sparkles className="w-16 h-16 text-primary gold-glow" />
+            <img src={logo} alt="Divine Roll" className="w-32 h-32 rounded-full shadow-2xl shadow-primary/40" />
           </div>
           <h1 className="text-6xl md:text-7xl font-serif font-bold text-primary mb-6 animate-fade-in">
             Divine Roll
