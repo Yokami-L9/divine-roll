@@ -190,7 +190,7 @@ const Auth = () => {
               <Wand2 className="w-7 h-7 text-primary-foreground" />
             </div>
           </div>
-          <h1 className="text-3xl font-serif font-bold text-primary">Arcane Nexus</h1>
+          <h1 className="text-3xl font-serif font-bold text-primary">Divine Roll</h1>
           <p className="text-muted-foreground mt-2">Войдите, чтобы сохранять свои приключения</p>
         </div>
 

@@ -189,7 +189,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border py-12">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>© 2024 Arcane Nexus. Создано для любителей D&D</p>
+          <p>© 2024 Divine Roll. Создано для любителей D&D</p>
         </div>
       </footer>
     </div>

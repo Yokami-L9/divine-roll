@@ -43,7 +43,7 @@ const Navigation = () => {
               <Wand2 className="w-6 h-6 text-primary-foreground" />
             </div>
             <span className="text-xl font-serif font-bold text-primary">
-              Arcane Nexus
+              Divine Roll
             </span>
           </Link>
 
