@@ -100,14 +100,14 @@ const Index = () => {
             <Sparkles className="w-16 h-16 text-primary gold-glow" />
           </div>
           <h1 className="text-6xl md:text-7xl font-serif font-bold text-primary mb-6 animate-fade-in">
-            Arcane Nexus
+            Divine Roll
           </h1>
           <p className="text-xl md:text-2xl text-foreground mb-8 animate-fade-in">
             Полноценная платформа для Dungeons & Dragons
           </p>
           <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
             Создавайте миры, персонажей и карты. Управляйте кампаниями.
-            Объединяйте функции DnD Beyond, World Anvil, Inkarnate и Roll20 в одном месте.
+            Все инструменты для игроков и мастеров в одном месте.
           </p>
           <div className="flex gap-4 justify-center">
             <Link to="/characters">
