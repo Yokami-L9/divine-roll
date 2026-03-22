@@ -13,10 +13,10 @@ import {
   Shield,
   Dices,
   BookOpen,
-  Sparkles,
   Library,
 } from "lucide-react";
 import heroBanner from "@/assets/hero-banner.jpg";
+import logo from "@/assets/logo.png";
 
 const Index = () => {
   const features = [
