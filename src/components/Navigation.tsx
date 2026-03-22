@@ -38,48 +38,54 @@ const Navigation = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-2 group">
-            <img src={logo} alt="Divine Roll" className="w-10 h-10 rounded-full group-hover:scale-110 transition-transform" />
-            <span className="text-xl font-serif font-bold text-primary">
+        <div className="flex h-16 items-center gap-3">
+          <Link to="/" className="group flex min-w-fit shrink-0 items-center gap-2">
+            <img
+              src={logo}
+              alt="Divine Roll"
+              className="h-10 w-10 rounded-full transition-transform group-hover:scale-110"
+            />
+            <span className="whitespace-nowrap text-xl font-serif font-bold text-primary">
               Divine Roll
             </span>
           </Link>
 
-          <div className="hidden lg:flex items-center gap-0.5">
-            {navItems.map((item) => (
-              <Link key={item.path} to={item.path} title={item.label}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1.5 px-2.5 hover:bg-primary/10 hover:text-primary transition-all text-xs"
-                >
-                  <item.icon className="w-4 h-4 shrink-0" />
-                  <span className="hidden xl:inline">{item.label}</span>
-                </Button>
-              </Link>
-            ))}
+          <div className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
+            <div className="flex items-center gap-0.5">
+              {navItems.map((item) => (
+                <Link key={item.path} to={item.path} title={item.label}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="px-2.5 hover:bg-primary/10 hover:text-primary transition-all"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="sr-only">{item.label}</span>
+                  </Button>
+                </Link>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {user ? (
               <>
                 <Link to="/profile">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer">
-                    <User className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium text-primary">
-                      {user.user_metadata?.username || user.email?.split('@')[0]}
+                  <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 transition-colors hover:bg-primary/20 cursor-pointer">
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="hidden text-sm font-medium text-primary xl:inline">
+                      {user.user_metadata?.username || user.email?.split("@")[0]}
                     </span>
                   </div>
                 </Link>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="border-primary/50 hover:bg-primary/10 gap-2"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-primary/50 gap-2 hover:bg-primary/10"
                   onClick={() => signOut()}
                 >
-                  <LogOut className="w-4 h-4" />
-                  Выйти
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden 2xl:inline">Выйти</span>
                 </Button>
               </>
             ) : (
