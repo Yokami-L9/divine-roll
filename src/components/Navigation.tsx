@@ -46,16 +46,16 @@ const Navigation = () => {
             </span>
           </Link>
 
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-0.5">
             {navItems.map((item) => (
-              <Link key={item.path} to={item.path}>
+              <Link key={item.path} to={item.path} title={item.label}>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-2 hover:bg-primary/10 hover:text-primary transition-all"
+                  className="gap-1.5 px-2.5 hover:bg-primary/10 hover:text-primary transition-all text-xs"
                 >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
+                  <item.icon className="w-4 h-4 shrink-0" />
+                  <span className="hidden xl:inline">{item.label}</span>
                 </Button>
               </Link>
             ))}
